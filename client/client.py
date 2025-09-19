@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 class LegalMindClient:
     """Client for Legal Mind AI MCP Server"""
     
-    def __init__(self, server_url: str = "http://localhost:8000", use_mcp: bool = True):
+    def __init__(self, server_url: str = "https://a9b58c306cc2.ngrok-free.app", use_mcp: bool = True):
         self.server_url = server_url
         self.use_mcp = use_mcp
         self.request_id = 1
