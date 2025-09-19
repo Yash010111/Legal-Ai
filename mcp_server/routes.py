@@ -11,8 +11,8 @@ import os
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from src.ai_engine import LegalMindAI
-from src.text_utils import clean_legal_text, extract_sections, extract_case_citations
+from ai_engine import LegalMindAI
+from text_utils import clean_legal_text, extract_sections, extract_case_citations
 
 router = APIRouter()
 
