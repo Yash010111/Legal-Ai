@@ -1,189 +1,67 @@
 """
 Legal Mind AI Chatbot
-Enhanced client that supports both HTTP API and MCP protocol
+Pure chatbot UI that sends requests to MCP server and uses local retrieval
 """
 
 import requests
-import json
-import asyncio
-from typing import Dict, Any, Optional
+import sys
+import os
+
+# Add helpers to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'helpers'))
+
+from retrieval import answer_legal_question, search_legal_database
 
 
-class LegalMindClient:
-    """Client for Legal Mind AI MCP Server"""
-    
-    def __init__(self, server_url: str = "https://a9b58c306cc2.ngrok-free.app", use_mcp: bool = True):
-        self.server_url = server_url
-        self.use_mcp = use_mcp
-        self.request_id = 1
-    
-    def _get_next_id(self) -> int:
-        """Get next request ID"""
-        current_id = self.request_id
-        self.request_id += 1
-        return current_id
-    
-    def ask_question_http(self, question: str, context: str = "") -> str:
-        """Send question using HTTP API"""
-        try:
-            response = requests.post(
-                f"{self.server_url}/query",
-                json={"question": question, "context": context}
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result.get("answer", "No answer received")
-        except Exception as e:
-            return f"Error: Cannot connect to server - {str(e)}"
-    
-    def ask_question_mcp(self, question: str, context: str = "") -> str:
-        """Send question using MCP protocol"""
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": self._get_next_id(),
-                "method": "tools/call",
-                "params": {
-                    "name": "ask_legal_question",
-                    "arguments": {
-                        "question": question,
-                        "context": context
-                    }
-                }
-            }
-            
-            response = requests.post(
-                f"{self.server_url}/mcp",
-                json=request_data,
-                headers={"Content-Type": "application/json"}
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
-                    return content[0].get("text", "No answer received")
-            
-            return "No answer received"
-            
-        except Exception as e:
-            return f"Error: Cannot connect to MCP server - {str(e)}"
-    
-    def ask_question(self, question: str, context: str = "") -> str:
-        """Ask a legal question using the configured protocol"""
-        if self.use_mcp:
-            return self.ask_question_mcp(question, context)
+def ask_question_local(question: str) -> str:
+    """Try to answer question using local JSON data first"""
+    try:
+        answer = answer_legal_question(question)
+        if answer and "don't have specific information" not in answer:
+            return f"📚 Local Knowledge: {answer}"
+        return None
+    except Exception as e:
+        return None
+
+
+def ask_question_server(question: str, server_url: str = "https://a9b58c306cc2.ngrok-free.app") -> str:
+    """Send question to MCP server and return answer"""
+    try:
+        response = requests.post(
+            f"{server_url}/query",
+            json={"question": question},
+            headers={"ngrok-skip-browser-warning": "true"}
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        # Safe access to result with proper error handling
+        if result and isinstance(result, dict):
+            return f"🤖 AI Response: {result.get('answer', 'No answer received')}"
         else:
-            return self.ask_question_http(question, context)
+            return f"Invalid response from server: {result}"
+            
+    except requests.exceptions.RequestException as e:
+        return f"Error: Cannot connect to server - {str(e)}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+def ask_question(question: str, server_url: str = "https://a9b58c306cc2.ngrok-free.app") -> str:
+    """Ask question using local data first, then server as fallback"""
+    # Try local retrieval first
+    local_answer = ask_question_local(question)
+    if local_answer:
+        return local_answer
     
-    def analyze_document(self, document_text: str) -> str:
-        """Analyze a legal document using MCP protocol"""
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": self._get_next_id(),
-                "method": "tools/call",
-                "params": {
-                    "name": "analyze_legal_document",
-                    "arguments": {
-                        "document_text": document_text
-                    }
-                }
-            }
-            
-            response = requests.post(
-                f"{self.server_url}/mcp",
-                json=request_data,
-                headers={"Content-Type": "application/json"}
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
-                    return content[0].get("text", "No analysis received")
-            
-            return "No analysis received"
-            
-        except Exception as e:
-            return f"Error: Cannot analyze document - {str(e)}"
-    
-    def search_database(self, query: str) -> str:
-        """Search the legal database using MCP protocol"""
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": self._get_next_id(),
-                "method": "tools/call",
-                "params": {
-                    "name": "search_legal_database",
-                    "arguments": {
-                        "query": query
-                    }
-                }
-            }
-            
-            response = requests.post(
-                f"{self.server_url}/mcp",
-                json=request_data,
-                headers={"Content-Type": "application/json"}
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
-                    return content[0].get("text", "No results found")
-            
-            return "No results found"
-            
-        except Exception as e:
-            return f"Error: Cannot search database - {str(e)}"
-    
-    def test_connection(self) -> bool:
-        """Test connection to the server"""
-        try:
-            response = requests.get(f"{self.server_url}/health", timeout=5)
-            return response.status_code == 200
-        except:
-            return False
+    # Fallback to server
+    return ask_question_server(question, server_url)
 
 
 def main():
-    """Enhanced chatbot UI with MCP support"""
-    print("🤖 Legal Mind AI Chatbot (MCP Enhanced)")
-    print("=" * 50)
-    
-    # Initialize client
-    client = LegalMindClient(use_mcp=True)
-    
-    # Test connection
-    print("🔌 Testing connection to server...")
-    if client.test_connection():
-        print("✅ Connected to Legal Mind AI MCP Server")
-    else:
-        print("❌ Cannot connect to server. Please ensure the server is running.")
-        print("   Run: python -m mcp_server.server")
-        return
-    
-    print("\n📋 Available commands:")
-    print("  - Ask any legal question")
-    print("  - Type 'analyze <document_text>' to analyze a document")
-    print("  - Type 'search <query>' to search the legal database")
-    print("  - Type 'quit' to exit")
-    print("\nAsk me any legal questions! Type 'quit' to exit.\n")
+    """Pure chatbot UI"""
+    print("🤖 Legal Mind AI Chatbot")
+    print("Ask me any legal questions! Type 'quit' to exit.\n")
     
     while True:
         try:
@@ -196,32 +74,8 @@ def main():
             if not user_input:
                 continue
             
-            # Handle special commands
-            if user_input.startswith('analyze '):
-                document_text = user_input[8:].strip()
-                if document_text:
-                    print("🤖 Legal Mind AI: ", end="", flush=True)
-                    result = client.analyze_document(document_text)
-                    print(result)
-                else:
-                    print("Please provide document text to analyze.")
-                print()
-                continue
-            
-            if user_input.startswith('search '):
-                query = user_input[7:].strip()
-                if query:
-                    print("🤖 Legal Mind AI: ", end="", flush=True)
-                    result = client.search_database(query)
-                    print(result)
-                else:
-                    print("Please provide a search query.")
-                print()
-                continue
-            
-            # Regular question
             print("🤖 Legal Mind AI: ", end="", flush=True)
-            answer = client.ask_question(user_input)
+            answer = ask_question(user_input)
             print(answer)
             print()
             

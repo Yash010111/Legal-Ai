@@ -18,6 +18,7 @@ router = APIRouter()
 
 # Initialize AI engine
 ai_engine = LegalMindAI()
+ai_engine.load_model()
 
 
 class QueryRequest(BaseModel):
