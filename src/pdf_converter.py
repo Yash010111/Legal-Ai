@@ -1,38 +1,19 @@
+"""
+PDF to Word converter using helper utilities
+"""
+
 import argparse
 import os
 import sys
+from typing import Optional
 
-
-def convert_pdf_to_docx(pdf_path: str, docx_path: str, start_page: int | None, end_page: int | None) -> None:
-    try:
-        from pdf2docx import Converter
-    except ImportError as exc:
-        print("Dependency missing: pdf2docx. Install it with:", file=sys.stderr)
-        print("  pip install pdf2docx", file=sys.stderr)
-        raise SystemExit(1) from exc
-
-    if not os.path.isfile(pdf_path):
-        print(f"Input PDF not found: {pdf_path}", file=sys.stderr)
-        raise SystemExit(1)
-
-    # Ensure destination directory exists
-    dest_dir = os.path.dirname(os.path.abspath(docx_path))
-    if dest_dir and not os.path.isdir(dest_dir):
-        os.makedirs(dest_dir, exist_ok=True)
-
-    # pdf2docx uses 0-based indexing for start/end
-    # If end_page is provided, make it inclusive as users expect
-    start = 0 if start_page is None else max(0, start_page)
-    end = None if end_page is None else max(0, end_page)
-
-    converter = Converter(pdf_path)
-    try:
-        converter.convert(docx_path, start=start, end=end)
-    finally:
-        converter.close()
+# Import from helpers
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from helpers.pdf_utils import convert_pdf_to_docx, find_pdf_files, ensure_output_path
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    """Parse command line arguments"""
     parser = argparse.ArgumentParser(
         description="Convert a PDF file or a directory of PDFs to Word (.docx) using pdf2docx."
     )
@@ -68,6 +49,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Main function for PDF to Word conversion"""
     if argv is None:
         argv = sys.argv[1:]
     args = parse_args(argv)
@@ -78,11 +60,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if os.path.isdir(input_path):
         # Directory mode
-        pdf_files = [
-            os.path.join(input_path, name)
-            for name in os.listdir(input_path)
-            if name.lower().endswith(".pdf") and os.path.isfile(os.path.join(input_path, name))
-        ]
+        pdf_files = find_pdf_files(input_path)
 
         if not pdf_files:
             print(f"No PDFs found in: {input_path}", file=sys.stderr)
@@ -90,14 +68,9 @@ def main(argv: list[str] | None = None) -> int:
 
         successes = 0
         failures = 0
-        for pdf_file in sorted(pdf_files):
+        for pdf_file in pdf_files:
             try:
-                if args.output_dir:
-                    os.makedirs(args.output_dir, exist_ok=True)
-                    base_name = os.path.splitext(os.path.basename(pdf_file))[0] + ".docx"
-                    output_docx = os.path.abspath(os.path.join(args.output_dir, base_name))
-                else:
-                    output_docx = os.path.splitext(pdf_file)[0] + ".docx"
+                output_docx = ensure_output_path(pdf_file, args.output_dir)
 
                 convert_pdf_to_docx(
                     pdf_path=pdf_file,
@@ -123,8 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.output_docx:
         output_docx = os.path.abspath(args.output_docx)
     else:
-        base, _ = os.path.splitext(os.path.abspath(input_pdf))
-        output_docx = base + ".docx"
+        output_docx = ensure_output_path(input_pdf)
 
     try:
         convert_pdf_to_docx(
@@ -145,5 +117,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
