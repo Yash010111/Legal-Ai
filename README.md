@@ -1,23 +1,38 @@
-## Legal-Ai PDF → Word Converter
+# Legal Mind AI
 
-Convert PDFs to Word (.docx) files in bulk or individually, optimized for legal documents.
+An intelligent legal assistant platform designed to streamline legal document processing and analysis.
 
 ### Project Report
 - Whole common project continuous report: [Google Doc](https://docs.google.com/document/d/1ujIPLa_VAtKPUq2dBzsqleXNELAGpozhfcepXkx0Z_E/edit?tab=t.0)
 
-### Features
+## Features
+
+### PDF → Word Converter
 - Convert a single PDF or an entire folder of PDFs
 - Preserves text, basic layout, and tables (best-effort)
 - Fully offline and free (uses `pdf2docx`)
+- Optimized for legal documents
 
 ### Requirements
 - Python 3.9+ (Windows, macOS, Linux)
-- Install dependency:
+
+### Setup
+
+#### First time setup (install uv - one time only)
 ```bash
-pip install pdf2docx
+pip install uv
 ```
 
-### Usage
+#### Install dependencies
+```bash
+uv sync
+```
+
+**Note:** Run `uv sync` every time a new dependency is added to the project.
+
+## Usage
+
+### PDF → Word Converter
 
 #### 1) Convert all PDFs in `Testing pdfs` (default)
 ```bash
