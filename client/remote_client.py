@@ -1,20 +1,26 @@
+#!/usr/bin/env python3
 """
-Legal Mind AI Chatbot
-Enhanced client that supports both HTTP API and MCP protocol
+Remote client for Legal Mind AI MCP Server
+Configure this for connecting from another PC
 """
 
 import requests
 import json
-import asyncio
 from typing import Dict, Any, Optional
 
+# CONFIGURATION - Update this with your server's IP address
+SERVER_IP = "192.168.1.100"  # Replace with your server's actual IP
+SERVER_PORT = 8000
+SERVER_URL = f"http://{SERVER_IP}:{SERVER_PORT}"
+MCP_ENDPOINT = f"{SERVER_URL}/mcp"
+HEALTH_ENDPOINT = f"{SERVER_URL}/health"
 
-class LegalMindClient:
-    """Client for Legal Mind AI MCP Server"""
+class RemoteLegalMindClient:
+    """Remote client for Legal Mind AI MCP Server"""
     
-    def __init__(self, server_url: str = "http://localhost:8000", use_mcp: bool = True):
-        self.server_url = server_url
-        self.use_mcp = use_mcp
+    def __init__(self):
+        self.server_url = SERVER_URL
+        self.mcp_endpoint = MCP_ENDPOINT
         self.request_id = 1
     
     def _get_next_id(self) -> int:
@@ -23,18 +29,13 @@ class LegalMindClient:
         self.request_id += 1
         return current_id
     
-    def ask_question_http(self, question: str, context: str = "") -> str:
-        """Send question using HTTP API"""
+    def test_connection(self) -> bool:
+        """Test connection to the remote server"""
         try:
-            response = requests.post(
-                f"{self.server_url}/query",
-                json={"question": question, "context": context}
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result.get("answer", "No answer received")
-        except Exception as e:
-            return f"Error: Cannot connect to server - {str(e)}"
+            response = requests.get(HEALTH_ENDPOINT, timeout=5)
+            return response.status_code == 200
+        except:
+            return False
     
     def ask_question_mcp(self, question: str, context: str = "") -> str:
         """Send question using MCP protocol"""
@@ -53,9 +54,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=10
             )
             response.raise_for_status()
             result = response.json()
@@ -70,15 +72,12 @@ class LegalMindClient:
             
             return "No answer received"
             
+        except requests.exceptions.Timeout:
+            return "Error: Request timed out - server may be busy"
+        except requests.exceptions.ConnectionError:
+            return f"Error: Cannot connect to server at {self.server_url}"
         except Exception as e:
-            return f"Error: Cannot connect to MCP server - {str(e)}"
-    
-    def ask_question(self, question: str, context: str = "") -> str:
-        """Ask a legal question using the configured protocol"""
-        if self.use_mcp:
-            return self.ask_question_mcp(question, context)
-        else:
-            return self.ask_question_http(question, context)
+            return f"Error: {str(e)}"
     
     def analyze_document(self, document_text: str) -> str:
         """Analyze a legal document using MCP protocol"""
@@ -96,9 +95,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=10
             )
             response.raise_for_status()
             result = response.json()
@@ -132,9 +132,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=10
             )
             response.raise_for_status()
             result = response.json()
@@ -151,31 +152,27 @@ class LegalMindClient:
             
         except Exception as e:
             return f"Error: Cannot search database - {str(e)}"
-    
-    def test_connection(self) -> bool:
-        """Test connection to the server"""
-        try:
-            response = requests.get(f"{self.server_url}/health", timeout=5)
-            return response.status_code == 200
-        except:
-            return False
-
 
 def main():
-    """Enhanced chatbot UI with MCP support"""
-    print("🤖 Legal Mind AI Chatbot (MCP Enhanced)")
+    """Main remote client interface"""
+    print("🌐 Legal Mind AI Remote Client")
     print("=" * 50)
+    print(f"🔗 Connecting to server: {SERVER_URL}")
     
     # Initialize client
-    client = LegalMindClient(use_mcp=True)
+    client = RemoteLegalMindClient()
     
     # Test connection
-    print("🔌 Testing connection to server...")
+    print("🔌 Testing connection to remote server...")
     if client.test_connection():
         print("✅ Connected to Legal Mind AI MCP Server")
     else:
-        print("❌ Cannot connect to server. Please ensure the server is running.")
-        print("   Run: python -m mcp_server.server")
+        print("❌ Cannot connect to server.")
+        print(f"   Please check:")
+        print(f"   1. Server is running on {SERVER_IP}:{SERVER_PORT}")
+        print(f"   2. Both PCs are on the same network")
+        print(f"   3. Firewall allows connections on port 8000")
+        print(f"   4. IP address is correct: {SERVER_IP}")
         return
     
     print("\n📋 Available commands:")
@@ -221,14 +218,13 @@ def main():
             
             # Regular question
             print("🤖 Legal Mind AI: ", end="", flush=True)
-            answer = client.ask_question(user_input)
+            answer = client.ask_question_mcp(user_input)
             print(answer)
             print()
             
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
             break
-
 
 if __name__ == "__main__":
     main()
