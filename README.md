@@ -30,36 +30,70 @@ uv sync
 
 **Note:** Run `uv sync` every time a new dependency is added to the project.
 
+## 🚀 Quick Start
+
+### Start the Server
+```bash
+python start_server.py
+# OR
+python -m mcp_server.server
+```
+
+### Start a Client
+```bash
+python start_client.py
+# OR
+python client/client.py  # Local client
+```
+
+### Test the Setup
+```bash
+python mcp_server/test_mcp_communication.py
+```
+
 ## Project Structure
 
 ```
-legal-mind-ai/
-├── README.md              # Project overview & setup
-├── requirements.txt       # Dependencies
-├── .gitignore             # Ignore cache, venv, data, etc.
+Legal-Ai/
+├── README.md                    # Project overview & setup
+├── CLIENT_SERVER_GUIDE.md       # Client & Server usage guide
+├── NGROK_SETUP_GUIDE.md         # Ngrok setup guide
+├── pyproject.toml               # Project dependencies
+├── requirements.txt             # Legacy dependencies
 │
-├── notebooks/             # Colab/Jupyter notebooks
+├── mcp_server/                  # MCP Server Files
+│   ├── __init__.py
+│   ├── server.py                # Main MCP server
+│   ├── routes.py                # API routes
+│   └── test_mcp_communication.py # Server tests
+│
+├── client/                      # Client Files
+│   ├── __init__.py
+│   ├── client.py                # Local client
+│   ├── ngrok_client.py          # Remote client (ngrok)
+│   └── remote_client.py         # Remote client (network)
+│
+├── src/                         # Core AI Engine
+│   ├── __init__.py
+│   ├── ai_engine.py             # Main AI inference logic
+│   ├── text_utils.py            # Text cleaning, formatting, parsing
+│   └── pdf_converter.py         # PDF to Word converter
+│
+├── dat/                         # Data Files
+│   └── sample_docs/
+│       └── constitution_qa.json
+│
+├── helpers/                     # Helper utilities
+│   └── pdf_utils.py
+│
+├── notebooks/                   # Jupyter notebooks
 │   └── demo.ipynb
 │
-├── helpers/               # Helper utilities
-│   └── helper.py
+├── tests/                       # Tests
+│   └── test_ai_engine.py
 │
-├── src/                   # Core AI logic
-│   ├── __init__.py
-│   ├── ai_engine.py       # Main AI inference logic
-│   ├── text_utils.py      # Text cleaning, formatting, parsing
-│   └── pdf_converter.py   # PDF to Word converter
-│
-├── mcp_server/            # MCP server for serving LegalMind
-│   ├── __init__.py
-│   ├── server.py          # FastAPI entry point
-│   └── routes.py          # API routes (query, docs upload, etc.)
-│
-├── data/                  # Store reference docs or sample inputs
-│   └── sample_docs/
-│
-└── tests/                 # Simple tests
-    └── test_ai_engine.py
+├── start_server.py              # Server startup script
+└── start_client.py              # Client launcher script
 ```
 
 ## Usage

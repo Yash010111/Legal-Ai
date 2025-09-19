@@ -1,20 +1,26 @@
+#!/usr/bin/env python3
 """
-Legal Mind AI Chatbot
-Enhanced client that supports both HTTP API and MCP protocol
+Ngrok client for Legal Mind AI MCP Server
+Configure this for connecting via ngrok tunnel
 """
 
 import requests
 import json
-import asyncio
 from typing import Dict, Any, Optional
 
+# CONFIGURATION - Update this with your ngrok URL
+NGROK_URL = "https://your-tunnel-id.ngrok.io"  # Replace with your actual ngrok URL
+SERVER_URL = NGROK_URL
+MCP_ENDPOINT = f"{SERVER_URL}/mcp"
+HEALTH_ENDPOINT = f"{SERVER_URL}/health"
 
-class LegalMindClient:
-    """Client for Legal Mind AI MCP Server"""
+class NgrokLegalMindClient:
+    """Ngrok client for Legal Mind AI MCP Server"""
     
-    def __init__(self, server_url: str = "http://localhost:8000", use_mcp: bool = True):
-        self.server_url = server_url
-        self.use_mcp = use_mcp
+    def __init__(self, ngrok_url: str = NGROK_URL):
+        self.server_url = ngrok_url
+        self.mcp_endpoint = f"{ngrok_url}/mcp"
+        self.health_endpoint = f"{ngrok_url}/health"
         self.request_id = 1
     
     def _get_next_id(self) -> int:
@@ -23,21 +29,16 @@ class LegalMindClient:
         self.request_id += 1
         return current_id
     
-    def ask_question_http(self, question: str, context: str = "") -> str:
-        """Send question using HTTP API"""
+    def test_connection(self) -> bool:
+        """Test connection to the ngrok server"""
         try:
-            response = requests.post(
-                f"{self.server_url}/query",
-                json={"question": question, "context": context}
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result.get("answer", "No answer received")
-        except Exception as e:
-            return f"Error: Cannot connect to server - {str(e)}"
+            response = requests.get(self.health_endpoint, timeout=10)
+            return response.status_code == 200
+        except:
+            return False
     
     def ask_question_mcp(self, question: str, context: str = "") -> str:
-        """Send question using MCP protocol"""
+        """Send question using MCP protocol via ngrok"""
         try:
             request_data = {
                 "jsonrpc": "2.0",
@@ -53,9 +54,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=15  # Longer timeout for ngrok
             )
             response.raise_for_status()
             result = response.json()
@@ -70,18 +72,15 @@ class LegalMindClient:
             
             return "No answer received"
             
+        except requests.exceptions.Timeout:
+            return "Error: Request timed out - ngrok tunnel may be slow"
+        except requests.exceptions.ConnectionError:
+            return f"Error: Cannot connect to ngrok tunnel at {self.server_url}"
         except Exception as e:
-            return f"Error: Cannot connect to MCP server - {str(e)}"
-    
-    def ask_question(self, question: str, context: str = "") -> str:
-        """Ask a legal question using the configured protocol"""
-        if self.use_mcp:
-            return self.ask_question_mcp(question, context)
-        else:
-            return self.ask_question_http(question, context)
+            return f"Error: {str(e)}"
     
     def analyze_document(self, document_text: str) -> str:
-        """Analyze a legal document using MCP protocol"""
+        """Analyze a legal document using MCP protocol via ngrok"""
         try:
             request_data = {
                 "jsonrpc": "2.0",
@@ -96,9 +95,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=15
             )
             response.raise_for_status()
             result = response.json()
@@ -117,7 +117,7 @@ class LegalMindClient:
             return f"Error: Cannot analyze document - {str(e)}"
     
     def search_database(self, query: str) -> str:
-        """Search the legal database using MCP protocol"""
+        """Search the legal database using MCP protocol via ngrok"""
         try:
             request_data = {
                 "jsonrpc": "2.0",
@@ -132,9 +132,10 @@ class LegalMindClient:
             }
             
             response = requests.post(
-                f"{self.server_url}/mcp",
+                self.mcp_endpoint,
                 json=request_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                timeout=15
             )
             response.raise_for_status()
             result = response.json()
@@ -151,31 +152,27 @@ class LegalMindClient:
             
         except Exception as e:
             return f"Error: Cannot search database - {str(e)}"
-    
-    def test_connection(self) -> bool:
-        """Test connection to the server"""
-        try:
-            response = requests.get(f"{self.server_url}/health", timeout=5)
-            return response.status_code == 200
-        except:
-            return False
-
 
 def main():
-    """Enhanced chatbot UI with MCP support"""
-    print("🤖 Legal Mind AI Chatbot (MCP Enhanced)")
+    """Main ngrok client interface"""
+    print("🌐 Legal Mind AI Ngrok Client")
     print("=" * 50)
+    print(f"🔗 Connecting to ngrok tunnel: {NGROK_URL}")
     
     # Initialize client
-    client = LegalMindClient(use_mcp=True)
+    client = NgrokLegalMindClient()
     
     # Test connection
-    print("🔌 Testing connection to server...")
+    print("🔌 Testing connection to ngrok tunnel...")
     if client.test_connection():
-        print("✅ Connected to Legal Mind AI MCP Server")
+        print("✅ Connected to Legal Mind AI MCP Server via ngrok")
     else:
-        print("❌ Cannot connect to server. Please ensure the server is running.")
-        print("   Run: python -m mcp_server.server")
+        print("❌ Cannot connect to ngrok tunnel.")
+        print(f"   Please check:")
+        print(f"   1. Ngrok is running: ngrok http 8000")
+        print(f"   2. Server is running: python -m mcp_server.server")
+        print(f"   3. Ngrok URL is correct: {NGROK_URL}")
+        print(f"   4. Update NGROK_URL in this file with the correct URL")
         return
     
     print("\n📋 Available commands:")
@@ -221,14 +218,13 @@ def main():
             
             # Regular question
             print("🤖 Legal Mind AI: ", end="", flush=True)
-            answer = client.ask_question(user_input)
+            answer = client.ask_question_mcp(user_input)
             print(answer)
             print()
             
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
             break
-
 
 if __name__ == "__main__":
     main()
