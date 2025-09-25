@@ -1,6 +1,6 @@
 [core]
     remote = mygdrive
 ['remote "mygdrive"']
-    url = gdrive://1nTTZ6e19BTJBs73y7WBjLV0COY-A2ZIR?hl
-    gdrive_use_service_account = true
-    gdrive_service_account_json_file_path = E:\mp\Legal-Ai\datasets\dvc_key.json
+    url = gdrive://1nTTZ6e19BTJBs73y7WBjLV0COY-A2ZIR
+    gdrive_client_id = 17985762019-rofjf9sl4jla5v11572p8je6movesd33.apps.googleusercontent.com
+    gdrive_client_secret = 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
