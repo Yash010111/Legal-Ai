@@ -1,0 +1,6 @@
+[core]
+    remote = mysp
+['remote "mysp"']
+    url = webdavs://mitadtu-my.sharepoint.com/personal/s41430_mituniversity_edu_in/Documents/data
+    user = s41430@mituniversity.edu.in
+    password = 9405045530
