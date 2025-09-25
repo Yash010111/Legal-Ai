@@ -8,13 +8,11 @@ from typing import Dict, Any, List, Optional
 import sys
 import os
 
-# Add src and helpers to path for imports
+# Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'helpers'))
 
 from ai_engine import LegalMindAI
 from text_utils import clean_legal_text, extract_sections, extract_case_citations
-from retrieval import answer_legal_question
 
 router = APIRouter()
 
@@ -63,27 +61,15 @@ async def query_legal_question(request: QueryRequest):
         Answer to the legal question
     """
     try:
-        # Try to get answer from legal database first
-        answer = answer_legal_question(request.question)
-        
-        # If we found a good answer from the database
-        if answer and "don't have specific information" not in answer and "I don't have" not in answer:
-            return QueryResponse(
-                answer=answer,
-                confidence=0.9,  # High confidence for database answers
-                sources=["Legal Database"]
-            )
-        
-        # Fallback to AI engine for more complex questions
-        ai_answer = ai_engine.answer_legal_question(
+        answer = ai_engine.answer_legal_question(
             question=request.question,
             context=request.context or ""
         )
         
         return QueryResponse(
-            answer=ai_answer,
-            confidence=0.7,  # Lower confidence for AI-generated answers
-            sources=["AI Engine"]
+            answer=answer,
+            confidence=0.8,  # TODO: Implement actual confidence scoring
+            sources=[]
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

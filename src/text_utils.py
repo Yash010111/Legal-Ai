@@ -164,6 +164,3 @@ def format_legal_text(text: str, max_line_length: int = 80) -> str:
             formatted_lines.append(line)
     
     return '\n'.join(formatted_lines)
-
-
-

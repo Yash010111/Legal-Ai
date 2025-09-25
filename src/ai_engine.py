@@ -73,6 +73,3 @@ class LegalMindAI:
         
         # TODO: Implement entity extraction logic
         return []
-
-
-
