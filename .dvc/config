@@ -1,6 +1,6 @@
 [core]
-    remote = mysp
-['remote "mysp"']
-    url = webdavs://mitadtu-my.sharepoint.com/personal/s41430_mituniversity_edu_in/Documents/data
-    user = s41430@mituniversity.edu.in
-    password = 9405045530
+    remote = mygdrive
+['remote "mygdrive"']
+    url = gdrive://1nTTZ6e19BTJBs73y7WBjLV0COY-A2ZIR?hl
+    gdrive_use_service_account = true
+    gdrive_service_account_json_file_path = E:\mp\Legal-Ai\datasets\dvc_key.json
