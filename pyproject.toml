@@ -11,5 +11,6 @@ dependencies = [
     "pdf2docx>=0.5.6",
     "pydantic>=2.5.0",
     "python-multipart>=0.0.6",
-    "dvc[gdrive]>=3.63.0",]
+    "dvc[gdrive]>=3.63.0",
+]
 
