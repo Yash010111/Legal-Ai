@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+.dvc/tmp/
 
 # Distribution / packaging
 .Python
@@ -150,3 +151,5 @@ cache/
 .DS_Store
 Thumbs.db
 /datasets
+.dvc/tmp/lock
+.dvc/tmp/lock
