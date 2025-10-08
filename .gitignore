@@ -153,3 +153,5 @@ Thumbs.db
 /datasets
 .dvc/tmp/lock
 .dvc/tmp/lock
+.dvc/tmp/lock
+.dvc/tmp/lock
