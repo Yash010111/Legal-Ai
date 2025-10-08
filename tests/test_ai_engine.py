@@ -10,7 +10,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from src.ai_engine import LegalMindAI
-from src.text_utils import clean_legal_text, extract_sections, extract_case_citations
+from src.txt_formatter import clean_legal_text, extract_sections, extract_case_citations
 
 
 class TestLegalMindAI(unittest.TestCase):

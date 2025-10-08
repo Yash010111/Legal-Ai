@@ -8,24 +8,22 @@ import sys
 from typing import Optional
 
 
-def convert_pdf_to_docx(pdf_path: str, docx_path: str, start_page: Optional[int] = None, end_page: Optional[int] = None) -> None:
+def convert_pdf_to_txt(pdf_path: str, txt_path: str) -> None:
     """
-    Convert a PDF file to DOCX format using pdf2docx.
+    Convert a PDF file directly to plain text (.txt).
     
     Args:
         pdf_path: Path to the input PDF file
-        docx_path: Path to the output DOCX file
-        start_page: 0-based index of the first page to convert (default: 0)
-        end_page: 0-based index of the last page to convert, inclusive (default: last page)
+        txt_path: Path to the output TXT file
     
     Raises:
-        SystemExit: If pdf2docx is not installed or PDF file doesn't exist
+        SystemExit: If PyPDF2 is not installed or PDF file doesn't exist
     """
     try:
-        from pdf2docx import Converter
+        import PyPDF2
     except ImportError as exc:
-        print("Dependency missing: pdf2docx. Install it with:", file=sys.stderr)
-        print("  pip install pdf2docx", file=sys.stderr)
+        print("Dependency missing: PyPDF2. Install it with:", file=sys.stderr)
+        print("  pip install PyPDF2", file=sys.stderr)
         raise SystemExit(1) from exc
 
     if not os.path.isfile(pdf_path):
@@ -33,20 +31,18 @@ def convert_pdf_to_docx(pdf_path: str, docx_path: str, start_page: Optional[int]
         raise SystemExit(1)
 
     # Ensure destination directory exists
-    dest_dir = os.path.dirname(os.path.abspath(docx_path))
+    dest_dir = os.path.dirname(os.path.abspath(txt_path))
     if dest_dir and not os.path.isdir(dest_dir):
         os.makedirs(dest_dir, exist_ok=True)
 
-    # pdf2docx uses 0-based indexing for start/end
-    # If end_page is provided, make it inclusive as users expect
-    start = 0 if start_page is None else max(0, start_page)
-    end = None if end_page is None else max(0, end_page)
+    with open(pdf_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
 
-    converter = Converter(pdf_path)
-    try:
-        converter.convert(docx_path, start=start, end=end)
-    finally:
-        converter.close()
+    with open(txt_path, "w", encoding="utf-8") as out_file:
+        out_file.write(text)
 
 
 def find_pdf_files(directory: str) -> list[str]:
@@ -71,15 +67,15 @@ def find_pdf_files(directory: str) -> list[str]:
     return sorted(pdf_files)
 
 
-def ensure_output_path(input_path: str, output_dir: Optional[str] = None, extension: str = ".docx") -> str:
+def ensure_output_path(input_path: str, output_dir: Optional[str] = None, extension: str = ".txt") -> str:
     """
-    Generate output path for converted file.
+    Generate output path for converted file (default .txt).
     
     Args:
         input_path: Path to the input file
         output_dir: Optional output directory (if None, uses same directory as input)
         extension: File extension for output file
-        
+    
     Returns:
         Path for the output file
     """

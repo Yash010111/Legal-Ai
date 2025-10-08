@@ -8,24 +8,44 @@ from typing import List, Dict, Any
 
 def clean_legal_text(text: str) -> str:
     """
-    Clean and normalize legal text for processing
+    Clean and normalize legal text for processing (law cases datasets)
     
     Args:
         text: Raw legal text
-        
+    
     Returns:
         Cleaned and normalized text
     """
-    # Remove extra whitespace
+    # Remove extra whitespace and blank lines
     text = re.sub(r'\s+', ' ', text)
-    
-    # Remove page numbers and headers/footers
+    text = re.sub(r'\n+', '\n', text)
+
+    # Remove page numbers, headers, footers, and line numbers
     text = re.sub(r'Page \d+ of \d+', '', text)
+    text = re.sub(r'\b(?:IN THE SUPREME COURT OF INDIA|JUDGMENT|ORDER|CORAM|DATE OF DECISION|APPEAL|PETITIONER|RESPONDENT|HON'"'BLE MR\.|HON'"'BLE MS\.|PRESENT:|COUNSEL FOR THE PARTIES|DECIDED ON|CASE NO\.|CITATION)\b.*?(?=\n|$)', '', text, flags=re.IGNORECASE)
     text = re.sub(r'^\d+\s*$', '', text, flags=re.MULTILINE)
-    
+
+    # Remove common boilerplate phrases
+    boilerplate_patterns = [
+        r'This judgment has been delivered by',
+        r'The following order of the Court was delivered',
+        r'For the reasons stated above',
+        r'Heard learned counsel for the parties',
+        r'In view of the above',
+        r'Accordingly, the appeal is allowed',
+        r'No order as to costs',
+        r'All pending applications stand disposed of',
+        r'Let a copy of this order be sent',
+    ]
+    for pattern in boilerplate_patterns:
+        text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+    # Remove multiple spaces
+    text = re.sub(r' +', ' ', text)
+
     # Normalize legal citations
     text = normalize_citations(text)
-    
+
     return text.strip()
 
 

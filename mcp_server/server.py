@@ -248,7 +248,7 @@ async def handle_analyze_legal_document(args: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Import here to avoid circular imports
         from .routes import ai_engine
-        from src.text_utils import clean_legal_text, extract_sections, extract_case_citations
+        from src.txt_formatter import clean_legal_text, extract_sections, extract_case_citations
         
         document_text = args.get("document_text", "")
         
