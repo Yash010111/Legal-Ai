@@ -26,8 +26,11 @@ def test_mcp_initialization():
     }
     
     try:
+        #Enter the custom ngrok url if you are using ngrok
+        #Otherwise, use the localhost url
+        url_of_the_server = "http://localhost:8000/mcp"
         response = requests.post(
-            "http://localhost:8000/mcp",
+            url_of_the_server,
             json=request_data,
             headers={"Content-Type": "application/json"}
         )
