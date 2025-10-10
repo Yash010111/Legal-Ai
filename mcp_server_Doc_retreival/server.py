@@ -211,19 +211,12 @@ async def mcp_endpoint(request: MCPRequest):
 
 
 async def handle_ask_legal_question(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle ask_legal_question tool call"""
+    """Handle ask_legal_question tool call using RAG from helpers/retrieval.py"""
     try:
-        # Import here to avoid circular imports
-        from .routes import ai_engine
-        
+        from helpers import retrieval
         question = args.get("question", "")
-        context = args.get("context", "")
-        
-        answer = ai_engine.answer_legal_question(
-            question=question,
-            context=context
-        )
-        
+        # context is ignored for now, but can be used for advanced retrieval
+        answer = retrieval.answer_legal_question(question)
         return {
             "content": [
                 {
@@ -289,19 +282,23 @@ async def handle_analyze_legal_document(args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def handle_search_legal_database(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle search_legal_database tool call"""
+    """Handle search_legal_database tool call using RAG from helpers/retrieval.py"""
     try:
+        from helpers import retrieval
         query = args.get("query", "")
-        
-        # For now, return a placeholder response
-        # TODO: Implement actual database search
+        results = retrieval.search_legal_database(query)
+        if results:
+            passages = "\n\n".join([
+                f"From {r['filename']}\n{r['passage'][:500]}" for r in results
+            ])
+            text = f"Search results for '{query}':\n\n{passages}"
+        else:
+            text = f"No relevant information found for '{query}' in the legal datasets."
         return {
             "content": [
                 {
                     "type": "text",
-                    "text": f"Search results for '{query}':\n\n"
-                           f"This is a placeholder response. "
-                           f"Database search functionality will be implemented."
+                    "text": text
                 }
             ]
         }
