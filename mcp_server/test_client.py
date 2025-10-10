@@ -6,7 +6,7 @@ Test script to verify MCP communication between server and client
 import requests
 import json
 import time
-
+url_of_the_server = "http://localhost:8000/mcp"
 def test_mcp_initialization():
     """Test MCP initialization"""
     print("🔧 Testing MCP Initialization...")
@@ -28,7 +28,7 @@ def test_mcp_initialization():
     try:
         #Enter the custom ngrok url if you are using ngrok
         #Otherwise, use the localhost url
-        url_of_the_server = "http://localhost:8000/mcp"
+        
         response = requests.post(
             url_of_the_server,
             json=request_data,
@@ -55,7 +55,7 @@ def test_mcp_tools_list():
     
     try:
         response = requests.post(
-            "http://localhost:8000/mcp",
+            url_of_the_server,
             json=request_data,
             headers={"Content-Type": "application/json"}
         )
@@ -89,7 +89,7 @@ def test_mcp_ask_question():
     
     try:
         response = requests.post(
-            "http://localhost:8000/mcp",
+            url_of_the_server,
             json=request_data,
             headers={"Content-Type": "application/json"}
         )
@@ -114,7 +114,7 @@ def test_server_health():
     print("🏥 Testing Server Health...")
     
     try:
-        response = requests.get("http://localhost:8000/health", timeout=5)
+        response = requests.get(url_of_the_server+"/health", timeout=5)
         response.raise_for_status()
         result = response.json()
         print(f"✅ Server is healthy: {result}")
