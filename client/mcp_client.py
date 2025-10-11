@@ -9,7 +9,7 @@ import os
 
 # Set NGROK_URL as environment variable or update here
 NGROK_URL = os.environ.get("NGROK_URL", "https://your-ngrok-url.ngrok.io")
-SERVER_URL = NGROK_URL
+SERVER_URL = "https://complainable-fermina-unapprehendably.ngrok-free.dev"
 MCP_ENDPOINT = f"{SERVER_URL}/mcp"
 HEALTH_ENDPOINT = f"{SERVER_URL}/health"
 

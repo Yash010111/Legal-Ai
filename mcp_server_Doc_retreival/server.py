@@ -13,7 +13,7 @@ import asyncio
 import sys
 import os
 
-from routes import router
+from mcp_server_Doc_retreival.routes import router
 
 app = FastAPI(
     title="Legal Mind AI MCP Server",
