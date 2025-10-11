@@ -103,18 +103,29 @@ class LegalRAGRetriever:
     
     def get_related_questions(self, topic: str, limit: int = 5) -> List[str]:
         """
-        Get related questions for a topic
-        
+        Get related questions for a topic by extracting sentences containing keywords from loaded documents.
         Args:
             topic: Topic to search for
             limit: Maximum number of questions to return
-            
         Returns:
             List of related questions
         """
-        results = self.search_questions(topic)
-        questions = [result['question'] for result in results[:limit]]
-        return questions
+        related = []
+        topic_lower = topic.lower()
+        for doc in self.documents:
+            sentences = re.split(r'[\.!?]', doc['text'])
+            for sent in sentences:
+                if topic_lower in sent.lower() and len(sent.strip()) > 20:
+                    related.append(sent.strip())
+        # Fallback: suggest fundamental rights if nothing found
+        if not related:
+            related = [
+                "What are the fundamental rights in the Constitution of India?",
+                "What is the Right to Equality?",
+                "What is the Right to Freedom?",
+                "What is the Right to Constitutional Remedies?"
+            ]
+        return related[:limit]
     
     def get_categories(self) -> List[str]:
         """Get all available categories"""
