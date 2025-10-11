@@ -242,6 +242,19 @@ async def handle_ask_legal_question(args: Dict[str, Any]) -> Dict[str, Any]:
         question = args.get("question", "")
         # context is ignored for now, but can be used for advanced retrieval
         answer = retrieval.answer_legal_question(question)
+        # If answer is a fallback message, provide more guidance
+        if answer.lower().startswith("no relevant information"):
+            # Try to suggest related questions or provide a helpful message
+            related = []
+            try:
+                retriever = retrieval.LegalRAGRetriever()
+                related = retriever.get_related_questions(question)
+            except Exception:
+                pass
+            if related:
+                answer += "\n\nRelated questions you can try:\n" + "\n".join(f"- {q}" for q in related)
+            else:
+                answer += "\n\nTry rephrasing your question or ask about fundamental rights, freedoms, or constitutional remedies."
         return {
             "content": [
                 {
