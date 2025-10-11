@@ -44,19 +44,13 @@ class LegalMindAI:
     def answer_legal_question(self, question: str, context: str = "") -> str:
         """
         Answer a legal question based on provided context
-        
-        Args:
-            question: The legal question to answer
-            context: Optional context or document content
-            
-        Returns:
-            Answer to the legal question
         """
         if not self.model_loaded:
             self.load_model()
-        
-        # TODO: Implement question answering logic
-        return "Legal question answering not yet implemented"
+        # Simple baseline: return the context as the answer
+        if context:
+            return context
+        return "Sorry, I do not have an answer for that question yet."
     
     def extract_legal_entities(self, text: str) -> List[Dict[str, str]]:
         """
