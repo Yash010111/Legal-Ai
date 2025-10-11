@@ -10,16 +10,15 @@ import os
 # Set NGROK_URL as environment variable or update here
 NGROK_URL = os.environ.get("NGROK_URL", "https://complainable-fermina-unapprehendably.ngrok-free.dev")
 SERVER_URL = NGROK_URL
-MCP_ENDPOINT = f"{SERVER_URL}/mcp"
+QUERY_ENDPOINT = f"{SERVER_URL}/query"
 HEALTH_ENDPOINT = f"{SERVER_URL}/health"
 
 class LegalMindMCPClient:
     """Client for Legal Mind AI MCP Server (ngrok compatible)"""
     def __init__(self, ngrok_url: str = None):
         self.server_url = ngrok_url or NGROK_URL
-        self.mcp_endpoint = f"{self.server_url}/mcp"
+        self.query_endpoint = f"{self.server_url}/query"
         self.health_endpoint = f"{self.server_url}/health"
-        self.request_id = 1
 
     def _get_next_id(self) -> int:
         current_id = self.request_id
@@ -35,33 +34,22 @@ class LegalMindMCPClient:
 
     def ask_legal_question(self, question: str, context: str = "") -> str:
         request_data = {
-            "jsonrpc": "2.0",
-            "id": self._get_next_id(),
-            "method": "tools/call",
-            "params": {
-                "name": "ask_legal_question",
-                "arguments": {
-                    "question": question,
-                    "context": context
-                }
-            }
+            "question": question,
+            "context": context
         }
         try:
             response = requests.post(
-                self.mcp_endpoint,
+                self.query_endpoint,
                 json=request_data,
                 headers={"Content-Type": "application/json"},
                 timeout=15
             )
             response.raise_for_status()
             result = response.json()
-            if "error" in result:
-                error_msg = result["error"].get("message", "Unknown error") if result["error"] else "Unknown error"
-                return f"Error: {error_msg}"
-            if "result" in result and result["result"]:
-                content = result["result"].get("content")
-                if content and isinstance(content, list) and len(content) > 0:
-                    return content[0].get("text", "No answer received")
+            if "answer" in result:
+                return result["answer"]
+            if "detail" in result:
+                return f"Error: {result['detail']}"
             return "No answer received"
         except requests.exceptions.Timeout:
             return "Error: Request timed out - ngrok tunnel may be slow"

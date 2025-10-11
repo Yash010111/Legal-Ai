@@ -11,12 +11,38 @@ from src.ai_engine import LegalMindAI
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+import glob
+
 
 router = APIRouter()
 
 # Initialize AI engine
 ai_engine = LegalMindAI()
 ai_engine.load_model()
+
+
+def retrieve_relevant_text(question: str, datasets_dir: str = "datasets", max_files: int = 5) -> str:
+    """
+    Naive retrieval: Search all .txt files in datasets for the question's keywords.
+    Returns concatenated snippets from the most relevant files.
+    """
+    import os
+    import re
+
+    if not os.path.exists(datasets_dir):
+        return ""
+
+    files = glob.glob(os.path.join(datasets_dir, "*.txt"))
+    results = []
+    for file in files:
+        with open(file, "r", encoding="utf-8") as f:
+            text = f.read()
+            # Simple keyword match
+            if any(word.lower() in text.lower() for word in question.split()):
+                results.append(text[:2000])  # Take first 2000 chars as snippet
+
+    # Return concatenated context from up to max_files
+    return "\n\n".join(results[:max_files])
 
 
 class QueryRequest(BaseModel):
@@ -47,29 +73,28 @@ class DocumentAnalysisResponse(BaseModel):
     confidence: float
 
 
+
 @router.post("/query", response_model=QueryResponse)
 async def query_legal_question(request: QueryRequest):
     """
     Answer a legal question
-    
-    Args:
-        request: Query request with question and optional context
-        
-    Returns:
-        Answer to the legal question
     """
     try:
+        # Retrieve context from datasets if not provided
+        context = request.context
+        if not context:
+            context = retrieve_relevant_text(request.question)
         answer = ai_engine.answer_legal_question(
             question=request.question,
-            context=request.context or ""
+            context=context
         )
-        
         return QueryResponse(
             answer=answer,
             confidence=0.8,  # TODO: Implement actual confidence scoring
             sources=[]
         )
     except Exception as e:
+        print(f"Error in /query endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
