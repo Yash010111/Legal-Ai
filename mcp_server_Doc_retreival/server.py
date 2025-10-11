@@ -148,7 +148,6 @@ async def mcp_endpoint(request: MCPRequest):
                     }
                 }
             )
-        
         elif request.method == "tools/list":
             return MCPResponse(
                 id=request.id,
@@ -156,20 +155,25 @@ async def mcp_endpoint(request: MCPRequest):
                     "tools": [tool.dict() for tool in MCP_TOOLS]
                 }
             )
-        
         elif request.method == "tools/call":
             if not request.params or "name" not in request.params:
                 return MCPResponse(
                     id=request.id,
+                    result={
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Error: Invalid params: missing tool name"
+                            }
+                        ]
+                    },
                     error={
                         "code": -32602,
                         "message": "Invalid params: missing tool name"
                     }
                 )
-            
             tool_name = request.params["name"]
             tool_args = request.params.get("arguments", {})
-            
             # Route to appropriate tool handler
             if tool_name == "ask_legal_question":
                 result = await handle_ask_legal_question(tool_args)
@@ -180,29 +184,50 @@ async def mcp_endpoint(request: MCPRequest):
             else:
                 return MCPResponse(
                     id=request.id,
+                    result={
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"Error: Unknown tool: {tool_name}"
+                            }
+                        ]
+                    },
                     error={
                         "code": -32601,
                         "message": f"Unknown tool: {tool_name}"
                     }
                 )
-            
             return MCPResponse(
                 id=request.id,
                 result=result
             )
-        
         else:
             return MCPResponse(
                 id=request.id,
+                result={
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error: Unknown method: {request.method}"
+                        }
+                    ]
+                },
                 error={
                     "code": -32601,
                     "message": f"Unknown method: {request.method}"
                 }
             )
-    
     except Exception as e:
         return MCPResponse(
             id=request.id,
+            result={
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Internal error: {str(e)}"
+                    }
+                ]
+            },
             error={
                 "code": -32603,
                 "message": f"Internal error: {str(e)}"
