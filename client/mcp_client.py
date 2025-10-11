@@ -8,7 +8,7 @@ import json
 import os
 
 # Set NGROK_URL as environment variable or update here
-NGROK_URL = os.environ.get("NGROK_URL", "https://complainable-fermina-unapprehendably.ngrok-free.dev/")
+NGROK_URL = os.environ.get("NGROK_URL", "https://complainable-fermina-unapprehendably.ngrok-free.dev")
 SERVER_URL = NGROK_URL
 MCP_ENDPOINT = f"{SERVER_URL}/mcp"
 HEALTH_ENDPOINT = f"{SERVER_URL}/health"
