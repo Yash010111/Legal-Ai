@@ -56,10 +56,11 @@ class LegalMindMCPClient:
             response.raise_for_status()
             result = response.json()
             if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
+                error_msg = result["error"].get("message", "Unknown error") if result["error"] else "Unknown error"
+                return f"Error: {error_msg}"
+            if "result" in result and result["result"]:
+                content = result["result"].get("content")
+                if content and isinstance(content, list) and len(content) > 0:
                     return content[0].get("text", "No answer received")
             return "No answer received"
         except requests.exceptions.Timeout:
@@ -91,10 +92,11 @@ class LegalMindMCPClient:
             response.raise_for_status()
             result = response.json()
             if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
+                error_msg = result["error"].get("message", "Unknown error") if result["error"] else "Unknown error"
+                return f"Error: {error_msg}"
+            if "result" in result and result["result"]:
+                content = result["result"].get("content")
+                if content and isinstance(content, list) and len(content) > 0:
                     return content[0].get("text", "No analysis received")
             return "No analysis received"
         except Exception as e:
@@ -122,10 +124,11 @@ class LegalMindMCPClient:
             response.raise_for_status()
             result = response.json()
             if "error" in result:
-                return f"Error: {result['error'].get('message', 'Unknown error')}"
-            if "result" in result and "content" in result["result"]:
-                content = result["result"]["content"]
-                if content and len(content) > 0:
+                error_msg = result["error"].get("message", "Unknown error") if result["error"] else "Unknown error"
+                return f"Error: {error_msg}"
+            if "result" in result and result["result"]:
+                content = result["result"].get("content")
+                if content and isinstance(content, list) and len(content) > 0:
                     return content[0].get("text", "No results found")
             return "No results found"
         except Exception as e:
