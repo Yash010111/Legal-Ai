@@ -1,0 +1,8 @@
+{
+    "Accuracy": 0.87,
+    "Precision": 0.85,
+    "Recall": 0.88,
+    "F1-score": 0.86,
+    "ROC-AUC": 0.90,
+    "Specificity": 0.84
+}
