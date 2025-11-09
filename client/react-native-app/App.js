@@ -120,6 +120,31 @@ export default function App() {
         <TouchableOpacity style={styles.saveBtn} onPress={saveUrl}>
           <Text style={styles.saveBtnText}>Save</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: '#6b7280', marginLeft: 8 }]} onPress={async () => {
+          // Ping server and show raw response as assistant message
+          const prev = serverUrl;
+          try {
+            // use the urlEdit if user modified it but hasn't saved yet
+            const toUse = (urlEdit && urlEdit.trim()) || serverUrl;
+            let target = toUse;
+            try { const p = new URL(toUse); if(!p.pathname || p.pathname === '/') { p.pathname = '/query'; target = p.toString(); } } catch(_) { try { const p2 = new URL(`http://${toUse}`); if(!p2.pathname||p2.pathname==='/'){ p2.pathname='/query'; target = p2.toString(); } else target = p2.toString(); } catch(__){ target = toUse; } }
+            const res = await fetch(target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: 'ping' }) });
+            const ct = res.headers.get('content-type') || '';
+            let bodyText = '';
+            if (ct.includes('application/json')) {
+              const j = await res.json(); bodyText = JSON.stringify(j);
+            } else {
+              bodyText = await res.text();
+            }
+            const msg = { id: Date.now().toString(), sender: 'assistant', text: `Ping response: ${bodyText}` };
+            setMessages((m) => [...m, msg]);
+          } catch (e) {
+            const msg = { id: Date.now().toString(), sender: 'assistant', text: `Ping error: ${e.message}` };
+            setMessages((m) => [...m, msg]);
+          }
+        }}>
+          <Text style={styles.saveBtnText}>Ping</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
