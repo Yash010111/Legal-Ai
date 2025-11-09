@@ -257,52 +257,22 @@ async def root(request: Request):
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="kpi"><div class="val">Realtime Activity</div><div class="muted">requests & tool-calls (live)</div></div>
-                        <div style="margin-top:10px;display:flex;gap:12px;align-items:center">
-                            <div style="flex:1">
-                                <div class="muted">Requests/sec</div>
-                                <canvas id="reqCanvas" width="400" height="80" style="width:100%;height:80px;background:transparent"></canvas>
+                    <!-- Realtime Activity card removed as requested; live metrics remain below -->
+
+                    <div class="card wide">
+                            <div class="kpi"><div class="val">Requests (recent)</div></div>
+                            <div style="margin-top:10px;">
+                                <!-- left margin reserved for Y-axis labels; canvas covers full width and drawing will offset accordingly -->
+                                <canvas id="lineCanvas" width="1200" height="240" style="width:100%;height:240px;background:transparent"></canvas>
                             </div>
-                            <div style="flex:1">
-                                <div class="muted">Tool-calls/sec</div>
-                                <canvas id="toolCanvas" width="400" height="80" style="width:100%;height:80px;background:transparent"></canvas>
-                            </div>
-                        </div>
-                        <div style="margin-top:8px;display:flex;gap:12px;align-items:center">
-                            <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-                                <div style="font-size:13px;color:var(--muted)">Updated every 2s • History: last %%METRICS_SECONDS%% seconds</div>
-                                <div style="display:flex;gap:8px;align-items:center">
-                                    <div style="flex:1">
-                                        <div class="muted">Health ping</div>
-                                        <canvas id="pingHealthSmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
-                                    </div>
-                                    <div style="flex:1">
-                                        <div class="muted">MCP ping</div>
-                                        <canvas id="pingMcpSmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
-                                    </div>
-                                    <div style="flex:1">
-                                        <div class="muted">Query ping</div>
-                                        <canvas id="pingQuerySmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
-                                    </div>
+                            <div style="margin-top:8px" class="muted">This chart reflects recent requests/sec (history last %%METRICS_SECONDS%% seconds).</div>
+                            <div style="display:flex;align-items:center;justify-content:space-between">
+                                <div style="display:flex;gap:14px;align-items:center;font-family:monospace;color:var(--muted);font-size:13px">
+                                    <div>Now: <strong id="reqNow">-</strong></div>
+                                    <div>Avg: <strong id="reqAvg">-</strong></div>
+                                    <div>Max: <strong id="reqMax">-</strong></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="kpi"><div class="val">Live Simulation</div><div class="muted">continuous flow</div></div>
-                        <div style="margin-top:10px;display:flex;gap:12px;align-items:center">
-                            <div style="flex:1">
-                                <div class="muted">Sample Bars (continuous)</div>
-                                <canvas id="barCanvas" width="400" height="120" style="width:100%;height:120px;background:transparent"></canvas>
-                            </div>
-                            <div style="flex:1">
-                                <div class="muted">Flowing Line (continuous)</div>
-                                <canvas id="lineCanvas" width="400" height="120" style="width:100%;height:120px;background:transparent"></canvas>
-                            </div>
-                        </div>
-                        <div style="margin-top:8px" class="muted">These charts use synthetic streaming data to demonstrate continuous updates.</div>
                     </div>
 
                     <div class="card wide">
@@ -358,63 +328,7 @@ async def root(request: Request):
                     }
                 }
 
-                // initial warmup
-                for(let i=0;i<6;i++) pingHealth();
-                setInterval(pingHealth, 2000);
-
-                // small sparklines for health, mcp and query endpoints (use actual pings, not random)
-                const phCanvas = document.getElementById('pingHealthSmall');
-                const phCtx = phCanvas ? phCanvas.getContext('2d') : null;
-                const pmCanvas = document.getElementById('pingMcpSmall');
-                const pmCtx = pmCanvas ? pmCanvas.getContext('2d') : null;
-                const pqCanvas = document.getElementById('pingQuerySmall');
-                const pqCtx = pqCanvas ? pqCanvas.getContext('2d') : null;
-
-                const smallMax = 30;
-                const ph = [], pm = [], pq = [];
-
-                async function pingEndpoint(path, arr, ctx, method='GET', body=null){
-                    const t0 = performance.now();
-                    try{
-                        let res;
-                        if(method === 'POST'){
-                            res = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: body});
-                        } else {
-                            res = await fetch(path, {cache:'no-store'});
-                        }
-                        const t1 = performance.now();
-                        const ms = Math.round(t1-t0);
-                        arr.push(ms); if(arr.length>smallMax) arr.shift();
-                        drawSmallSpark(ctx, arr);
-                        return ms;
-                    }catch(e){
-                        arr.push(999); if(arr.length>smallMax) arr.shift();
-                        drawSmallSpark(ctx, arr);
-                        return null;
-                    }
-                }
-
-                function drawSmallSpark(ctx, values){
-                    if(!ctx) return;
-                    const w = ctx.canvas.width; const h = ctx.canvas.height;
-                    ctx.clearRect(0,0,w,h);
-                    // grid lines
-                    ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
-                    ctx.beginPath(); for(let y=0;y<=h;y+=h/4){ ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); } ctx.stroke();
-                    if(values.length===0) return;
-                    const maxV = Math.max(50, ...values);
-                    ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(123,227,255,0.95)';
-                    values.forEach((v,i)=>{
-                        const x = (i/(values.length-1))*w;
-                        const y = h - (v/maxV)*h;
-                        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-                    }); ctx.stroke();
-                }
-
-                // ping loops
-                setInterval(()=>{ pingEndpoint('/health', ph, phCtx); }, 2000);
-                setInterval(()=>{ pingEndpoint('/mcp', pm, pmCtx, 'POST', JSON.stringify({jsonrpc:'2.0', id:1, method:'tools/list'})); }, 2000);
-                setInterval(()=>{ pingEndpoint('/query', pq, pqCtx); }, 2000);
+                // Automated health pinging removed (no periodic /health requests)
 
                 function testTools() {
                     fetch('/mcp', {
@@ -423,118 +337,110 @@ async def root(request: Request):
                     }).then(r=>r.json()).then(j=>alert('Tools:\n'+JSON.stringify(j.result.tools,null,2))).catch(e=>alert('Error'));
                 }
 
-                // Real-time metrics charting (MODIFIED TO USE DUMMY DATA)
-                const reqCanvas = document.getElementById('reqCanvas');
-                const reqCtx = reqCanvas ? reqCanvas.getContext('2d') : null;
-                const toolCanvas = document.getElementById('toolCanvas');
-                const toolCtx = toolCanvas ? toolCanvas.getContext('2d') : null;
+                // Per-card realtime canvases removed (requests & tool-calls card); metrics still feed the flowing charts below
 
-                function drawLine(ctx, values, color) {
-                    if(!ctx) return;
-                    const w = ctx.canvas.width; const h = ctx.canvas.height;
-                    ctx.clearRect(0,0,w,h);
-                    if(values.length===0) return;
-                    const maxV = Math.max(1, ...values);
-                    ctx.beginPath();
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = color;
-                    values.forEach((v,i)=>{
-                        const x = (i/(values.length-1))*w;
-                        const y = h - (v/maxV)*h;
-                        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-                    });
-                    ctx.stroke();
-                }
-                
-                // --- DUMMY DATA ARRAYS for Realtime Activity ---
-                // Data is initialized with a few points to immediately draw a line, then shifts
-                // METRICS_WINDOW is 120 in the backend, but we'll use a smaller size here for flow visualization
-                const historySize = 30; // 60 seconds of history at 2s interval
-                // Initialize with randomish values that start high and drop to simulate recent activity
-                let dummyReqs = Array(historySize).fill(0).map((_, i) => Math.max(0, 3 - i * 0.1) + Math.random() * 0.5);
-                let dummyTools = Array(historySize).fill(0).map((_, i) => Math.max(0, 1 - i * 0.05) + Math.random() * 0.2);
+                // Buffers that back the visualizations; these will be populated from /metrics
+                let simLine = new Array(128).fill(0);
 
-                function updateMetrics() {
-                    // Generate new random data points that flow near a low rate (e.g., 0.5 - 3.0 req/s)
-                    const nextReq = 0.5 + Math.random() * 2.5; 
-                    const nextTool = 0.1 + Math.random() * 0.9;
-                    
-                    // Shift the history and push the new point
-                    dummyReqs.shift();
-                    dummyReqs.push(nextReq); 
-                    
-                    dummyTools.shift();
-                    dummyTools.push(nextTool); 
-
-                    drawLine(reqCtx, dummyReqs, 'rgba(123,227,255,0.95)');
-                    drawLine(toolCtx, dummyTools, 'rgba(159,92,255,0.95)');
+                // Helper to take the last n values from metrics history and pad to length
+                function takeLast(arr, n){
+                    const res = new Array(n).fill(0);
+                    const start = Math.max(0, arr.length - n);
+                    for(let i = start; i < arr.length; i++){
+                        res[n - (arr.length - i)] = arr[i];
+                    }
+                    return res;
                 }
 
-                // initial metrics load and polling
-                updateMetrics();
-                setInterval(updateMetrics, 2000);
+                async function updateMetrics(){
+                    try{
+                        const r = await fetch('/metrics', {cache:'no-store'});
+                        if(!r.ok) return;
+                        const j = await r.json();
+                        const hist = j.history || [];
+                        // map history to numeric series (older -> newer)
+                        const reqs = hist.map(x=> typeof x.req_rate === 'number' ? x.req_rate : 0);
+                        // feed the visualization buffer (flowing area) with the latest series
+                        simLine = takeLast(reqs, simLine.length);
+                        // update numeric readouts (Now/Avg/Max)
+                        try{
+                            const last = simLine.length? simLine[simLine.length-1] : 0;
+                            const avg = simLine.length? Math.round((simLine.reduce((a,b)=>a+b,0)/simLine.length)*100)/100 : 0;
+                            const max = simLine.length? Math.max(...simLine) : 0;
+                            const nowEl = document.getElementById('reqNow');
+                            const avgEl = document.getElementById('reqAvg');
+                            const maxEl = document.getElementById('reqMax');
+                            if(nowEl) nowEl.textContent = String(last);
+                            if(avgEl) avgEl.textContent = String(avg);
+                            if(maxEl) maxEl.textContent = String(max);
+                        }catch(e){/* ignore UI update errors */}
+                    }catch(e){
+                        // ignore network errors silently; overlay will show unhandled errors if needed
+                    }
+                }
 
-                // Simulation continuous charts: bar and flowing line
-                const barCanvas = document.getElementById('barCanvas');
-                const barCtx = barCanvas ? barCanvas.getContext('2d') : null;
+                // Automated metrics polling removed (no periodic /metrics requests)
+
+                // Flowing line only (requests)
                 const lineCanvas = document.getElementById('lineCanvas');
                 const lineCtx = lineCanvas ? lineCanvas.getContext('2d') : null;
 
-                // draw background grid similar to system charts
-                function drawGrid(ctx, stepY=20, stepX=50, color='rgba(255,255,255,0.03)'){
+                // draw background grid similar to system charts (confined to plotting area)
+                function drawGrid(ctx, leftMargin, stepY=20, stepX=50, color='rgba(255,255,255,0.03)'){
                     if(!ctx) return;
                     const w = ctx.canvas.width; const h = ctx.canvas.height;
                     ctx.save();
                     ctx.strokeStyle = color; ctx.lineWidth = 1;
                     ctx.beginPath();
-                    for(let y=0;y<=h;y+=stepY){ ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); }
-                    for(let x=0;x<=w;x+=stepX){ ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
+                    // horizontal grid across plotting area
+                    for(let y=0;y<=h;y+=stepY){ ctx.moveTo(leftMargin,y+0.5); ctx.lineTo(w,y+0.5); }
+                    // vertical grid inside plotting area
+                    for(let x=leftMargin;x<=w;x+=stepX){ ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h); }
                     ctx.stroke(); ctx.restore();
                 }
 
-                function drawBar(ctx, values, color) {
-                    if(!ctx) return;
-                    const w = ctx.canvas.width; const h = ctx.canvas.height;
-                    ctx.clearRect(0,0,w,h);
-                    drawGrid(ctx, 20, Math.floor(w/8));
-                    if(values.length===0) return;
-                    const barW = w / values.length;
-                    const maxV = Math.max(1, ...values);
-                    values.forEach((v,i)=>{
-                        const bw = Math.max(2, Math.floor(barW*0.8));
-                        const x = i*barW + (barW-bw)/2;
-                        const bh = (v/maxV)*h;
-                        // main bar
-                        const grad = ctx.createLinearGradient(x, h-bh, x, h);
-                        grad.addColorStop(0, color);
-                        grad.addColorStop(1, 'rgba(0,0,0,0.06)');
-                        ctx.fillStyle = grad;
-                        ctx.fillRect(x, h-bh, bw, bh);
-                        // subtle stroke
-                        ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 1;
-                        ctx.strokeRect(x+0.5, h-bh+0.5, bw-1, bh-1);
-                    });
-                }
-
-                // Smooth flowing filled-area line chart with grid
+                // Smooth flowing filled-area line chart with grid (requests) and Y-axis labels
                 function drawFlowingArea(ctx, values, color) {
                     if(!ctx) return;
                     const w = ctx.canvas.width; const h = ctx.canvas.height;
                     ctx.clearRect(0,0,w,h);
-                    drawGrid(ctx, 18, Math.floor(w/12));
-                    if(values.length===0) return;
+                    const leftMargin = Math.max(44, Math.floor(w * 0.06)); // reserve space for Y labels
+                    const plotW = w - leftMargin - 8; // small right padding
+                    // draw grid within plotting area
+                    drawGrid(ctx, leftMargin, 18, Math.floor(plotW/12));
+                    if(!values || values.length < 2) return;
                     const maxV = Math.max(1, ...values);
-                    // path for line
+                    const minV = 0;
+                    // draw Y axis line
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(leftMargin+0.5, 0); ctx.lineTo(leftMargin+0.5, h); ctx.stroke();
+                    ctx.restore();
+
+                    // draw Y ticks and labels
+                    const tickCount = 4;
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '12px system-ui, Arial'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                    for(let t=0;t<=tickCount;t++){
+                        const frac = t / tickCount;
+                        const y = h - frac * h;
+                        const value = (minV + (1-frac)*(maxV-minV));
+                        const label = (value >= 100 ? Math.round(value) : Number(value.toFixed(2)));
+                        ctx.fillText(String(label), leftMargin - 8, y);
+                        // small tick mark
+                        ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(leftMargin+2, y+0.5); ctx.lineTo(leftMargin+6, y+0.5); ctx.stroke();
+                    }
+
+                    // path for line (map values into plotting area)
                     ctx.beginPath();
                     values.forEach((v,i)=>{
-                        const x = (i/(values.length-1))*w;
-                        const y = h - (v/maxV)*h;
+                        const x = leftMargin + (i/(values.length-1))*plotW;
+                        const y = h - ((v - minV)/(maxV - minV))*h;
                         if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
                     });
                     // create filled area
-                    const lastX = w; const baseY = h;
+                    const lastX = leftMargin + plotW; const baseY = h;
                     ctx.lineTo(lastX, baseY);
-                    ctx.lineTo(0, baseY);
+                    ctx.lineTo(leftMargin, baseY);
                     ctx.closePath();
                     // fill with gradient
                     const grad = ctx.createLinearGradient(0,0,0,h);
@@ -545,30 +451,15 @@ async def root(request: Request):
                     // draw line on top
                     ctx.beginPath();
                     values.forEach((v,i)=>{
-                        const x = (i/(values.length-1))*w;
-                        const y = h - (v/maxV)*h;
+                        const x = leftMargin + (i/(values.length-1))*plotW;
+                        const y = h - ((v - minV)/(maxV - minV))*h;
                         if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
                     });
                     ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.stroke();
                 }
 
-                // generate synthetic streaming data and animate the flow
-                const simBar = new Array(12).fill(0).map(()=>Math.random()*10+2);
-                const simLine = new Array(64).fill(0).map(()=>Math.random()*5+1);
-
-                // update the data periodically; rendering is driven by rAF for smoothness
-                function stepSim() {
-                    simBar.shift(); simBar.push(4 + Math.random()*10);
-                    const nextVal = simLine[simLine.length-1]*0.88 + (Math.random()-0.5)*2.2 + 1.2;
-                    simLine.shift(); simLine.push(Math.max(0.2, nextVal));
-                }
-
-                // render loop
-                let lastStep = performance.now();
-                function renderLoop(now){
-                    // advance data every 600ms
-                    if(now - lastStep > 600){ stepSim(); lastStep = now; }
-                    drawBar(barCtx, simBar, 'rgba(0,200,150,0.92)');
+                // render loop: draw the flowing requests chart
+                function renderLoop(){
                     drawFlowingArea(lineCtx, simLine, 'rgba(159,92,255,0.98)');
                     requestAnimationFrame(renderLoop);
                 }
