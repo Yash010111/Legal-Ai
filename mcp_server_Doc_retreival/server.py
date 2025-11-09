@@ -34,7 +34,15 @@ except Exception:
 
 # Default model id for Gemma 2 b (can be overridden via GEMMA_MODEL env var)
 # Per user request the server should default to use google/gemma-2-2b.
+# Default model id for Gemma 2 b (can be overridden via GEMMA_MODEL env var)
+# Per previous user preference the server defaults were set to google/gemma-2-2b;
+# add a LOCAL_ONLY flag to prefer local execution always. By default LOCAL_ONLY=1
 os.environ.setdefault("GEMMA_MODEL", "google/gemma-2-2b")
+
+# If LOCAL_ONLY is set (default '1'), the /query endpoint will always run the local
+# fallback model and will NOT call the remote Hugging Face Inference API. Set
+# LOCAL_ONLY='0' to allow remote calls (not recommended per user's instruction).
+os.environ.setdefault("LOCAL_ONLY", "1")
 
 # Helper accessors used elsewhere in the module
 GEMMA_MODEL = os.environ.get("GEMMA_MODEL")
@@ -548,7 +556,7 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/query")
-async def query_endpoint(qreq: QueryRequest):
+async def query_endpoint(qreq: QueryRequest, request: Request):
     """Answer a free-text question using Gemma 2 b from Hugging Face.
 
     Behavior:
@@ -563,37 +571,45 @@ async def query_endpoint(qreq: QueryRequest):
         return {"error": "Missing question"}
 
     # Use the configured model (default set above to google/gemma-2-2b)
-    model_id = os.environ.get("GEMMA_MODEL", "google/gemma-2-2b")
-    hf_token = os.environ.get("HUGGINGFACE_API_TOKEN") or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
+    # Use the configured model (default set above)
+    model_id = os.environ.get("GEMMA_MODEL", os.environ.get("GEMMA_MODEL", "google/gemma-2-2b"))
 
-    # Require a Hugging Face token for remote inference with the hosted Gemma model.
-    # This avoids attempting a large local model fallback which is impractical in many environments.
-    if not hf_token:
-        # Return explicit HTTP 400 so clients know to set the token (use set_env.py or your shell)
-        raise HTTPException(status_code=400, detail=(
-            "Hugging Face API token is required for /query. "
-            "Set HUGGINGFACE_API_TOKEN (or HF_TOKEN) in the environment using your preferred method. "
-            "You can use the provided set_env.py or set the env var in your shell."
-        ))
+    # Token resolution: per your instruction only HUGGINGFACE_API_TOKEN will be considered
+    # and only when remote calls are allowed. Authorization header and alternate env
+    # variable names (HF_TOKEN / HF_API_TOKEN) are ignored.
+    hf_token = os.environ.get("HUGGINGFACE_API_TOKEN")
+
+    # If LOCAL_ONLY is set to '1' (default), always use local fallback and ignore remote.
+    local_only = os.environ.get("LOCAL_ONLY", "1").strip() in ("1", "true", "True")
+    if local_only:
+        hf_token = None
 
     try:
-        # Prefer remote Inference API when token is available
-        if hf_token:
+        # Remote (Inference API) path (only if not forced-local and hf_token present)
+        if hf_token and not local_only:
             try:
+                # per HF docs: use huggingface_hub.InferenceApi for hosted inference
                 from huggingface_hub import InferenceApi
-            except Exception:
-                InferenceApi = None
-
-            if InferenceApi is None:
-                raise RuntimeError("huggingface_hub not installed; set up local transformers or install huggingface_hub")
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=f"Missing dependency huggingface_hub: {exc}")
 
             infer = InferenceApi(repo_id=model_id, token=hf_token)
-            payload = {
-                "inputs": question,
-                "parameters": {"max_new_tokens": int(qreq.max_tokens or 256), "temperature": float(qreq.temperature or 0.0)},
-            }
-            resp = infer(payload)
-            # Response formats vary; try common fields
+            # Call using documented signature: infer(inputs=..., parameters={...})
+            try:
+                # Try the modern keyword-style call
+                resp = infer(inputs=question, parameters={"max_new_tokens": int(qreq.max_tokens or 256), "temperature": float(qreq.temperature or 0.0)})
+            except TypeError:
+                # Fallback: some versions expect a single payload dict
+                try:
+                    payload = {"inputs": question, "parameters": {"max_new_tokens": int(qreq.max_tokens or 256), "temperature": float(qreq.temperature or 0.0)}}
+                    resp = infer(payload)
+                except Exception as exc:
+                    raise HTTPException(status_code=502, detail=f"Inference API error (payload call): {exc}")
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail=f"Inference API error: {exc}")
+
+            # Response can be a dict or list depending on model/inference type
+            answer = None
             if isinstance(resp, dict):
                 answer = resp.get("generated_text") or resp.get("text") or json.dumps(resp)
             elif isinstance(resp, list) and len(resp) > 0:
@@ -607,22 +623,39 @@ async def query_endpoint(qreq: QueryRequest):
 
             return {"model": model_id, "answer": answer}
 
-        # No HF token: try local transformers pipeline
+        # Local transformers fallback (opt-in): follow standard transformers usage
         try:
-            from transformers import pipeline
+            from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
             import torch as _torch
-        except Exception as e:
-            return {"error": "transformers or torch not available locally", "detail": str(e)}
+        except Exception:
+            # If neither remote token nor local deps are available, instruct user how to proceed
+            raise HTTPException(status_code=400, detail=(
+                "No Hugging Face token provided and local transformers/torch not available. "
+                "Install transformers and torch to enable local fallback."
+            ))
 
+        # Choose a lightweight local fallback model to avoid downloading very large Gemma weights.
+        local_model = os.environ.get("LOCAL_FALLBACK_MODEL", "google/flan-t5-small")
+
+        # Attempt to run locally (may be slow or OOM for large models)
         device = 0 if _torch.cuda.is_available() else -1
-        pipe = pipeline("text-generation", model=model_id, device=device)
-        gen = pipe(question, max_new_tokens=int(qreq.max_tokens or 256), do_sample=False, temperature=float(qreq.temperature or 0.0))
-        if isinstance(gen, list) and len(gen) > 0 and isinstance(gen[0], dict) and "generated_text" in gen[0]:
-            answer = gen[0]["generated_text"]
-        else:
-            answer = str(gen)
+        try:
+            # Use pipeline for sequence-to-sequence models like FLAN-T5
+            # Load tokenizer and model explicitly to allow using use_auth_token=False when needed.
+            tokenizer = AutoTokenizer.from_pretrained(local_model, use_auth_token=False)
+            model = AutoModelForSeq2SeqLM.from_pretrained(local_model, use_auth_token=False)
+            pipe = pipeline("text2text-generation", model=model, tokenizer=tokenizer, device_map=None)
+            gen = pipe(question, max_new_tokens=int(qreq.max_tokens or 256), do_sample=False, temperature=float(qreq.temperature or 0.0))
+            if isinstance(gen, list) and len(gen) > 0 and isinstance(gen[0], dict) and "generated_text" in gen[0]:
+                answer = gen[0]["generated_text"]
+            else:
+                answer = str(gen)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Local model generation failed: {e}")
 
-        return {"model": model_id, "answer": answer}
+        return {"model": local_model, "answer": answer}
+    except Exception as e:
+        return {"error": "model invocation failed", "detail": str(e)}
 
     except Exception as e:
         return {"error": "model invocation failed", "detail": str(e)}
