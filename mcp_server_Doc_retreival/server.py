@@ -328,7 +328,11 @@ async def root(request: Request):
                     }
                 }
 
-                // Automated health pinging removed (no periodic /health requests)
+                // initial warmup
+                for(let i=0;i<6;i++) pingHealth();
+                setInterval(pingHealth, 2000);
+
+                // ping loops handled by main ping sparkline (pingHealth)
 
                 function testTools() {
                     fetch('/mcp', {
@@ -379,7 +383,9 @@ async def root(request: Request):
                     }
                 }
 
-                // Automated metrics polling removed (no periodic /metrics requests)
+                // initial metrics load and polling
+                updateMetrics();
+                setInterval(updateMetrics, 2000);
 
                 // Flowing line only (requests)
                 const lineCanvas = document.getElementById('lineCanvas');
