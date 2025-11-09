@@ -1,0 +1,13 @@
+:root{--blue:#2b6ef6;--green:#10b981;--muted:#e5e7eb}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:#f6f6f6;margin:0;padding:0}
+#app{max-width:720px;margin:0 auto;padding:16px}
+header{background:var(--blue);color:#fff;padding:12px;border-radius:6px}
+.url-row{display:flex;gap:8px;margin:12px 0}
+.url-row input{flex:1;padding:8px;border-radius:6px;border:1px solid #ddd}
+.messages{min-height:300px;border-radius:6px;padding:12px;background:#fff;border:1px solid #eee}
+.bubble{padding:10px;border-radius:8px;margin:8px 0;max-width:85%}
+.user{background:var(--blue);color:#fff;margin-left:auto}
+.bot{background:var(--muted);color:#111;margin-right:auto}
+.input-row{display:flex;gap:8px;margin-top:12px}
+.input-row input{flex:1;padding:10px;border-radius:6px;border:1px solid #ddd}
+.input-row button,.url-row button{background:var(--green);color:#fff;border:none;padding:8px 12px;border-radius:6px}
