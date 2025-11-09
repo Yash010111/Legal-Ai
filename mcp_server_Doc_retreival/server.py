@@ -515,6 +515,59 @@ async def health_check():
     return {"status": "healthy", "service": "legal-mind-ai-mcp"}
 
 
+@app.post("/query")
+async def query_endpoint(request: Request):
+    """Simple query endpoint that answers from datasets/constitution_qa.json
+
+    Expects JSON body: { "question": "..." }
+    Returns JSON: { "answer": "...", "confidence": 0.9, "sources": [] }
+    """
+    try:
+        payload = await request.json()
+        question = (payload.get('question') if isinstance(payload, dict) else None) or ''
+    except Exception:
+        raise HTTPException(status_code=400, detail='Invalid JSON')
+
+    if not question:
+        raise HTTPException(status_code=400, detail='Missing "question" in request body')
+
+    # Load QA pairs from datasets/constitution_qa.json
+    qa_path = os.path.join(os.getcwd(), 'datasets', 'constitution_qa.json')
+    if not os.path.exists(qa_path):
+        # fallback: empty answer
+        return {"answer": "", "confidence": 0.0, "sources": []}
+
+    try:
+        with open(qa_path, 'r', encoding='utf-8') as f:
+            qa_pairs = json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Failed to load QA data: {e}')
+
+    # Find best matching question using simple SequenceMatcher similarity
+    try:
+        from difflib import SequenceMatcher
+        best_score = 0.0
+        best_answer = None
+        for pair in qa_pairs:
+            q = (pair.get('question') or '') if isinstance(pair, dict) else ''
+            a = (pair.get('answer') or '') if isinstance(pair, dict) else ''
+            if not q:
+                continue
+            score = SequenceMatcher(None, question.lower(), q.lower()).ratio()
+            if score > best_score:
+                best_score = score
+                best_answer = a
+
+        # Threshold for confident match
+        threshold = 0.45
+        if best_answer and best_score >= threshold:
+            return {"answer": best_answer, "confidence": round(best_score, 3), "sources": []}
+        else:
+            return {"answer": "Sorry, I do not have an answer for that question yet.", "confidence": round(best_score, 3), "sources": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Error processing QA: {e}')
+
+
 @app.post("/mcp", response_model=MCPResponse)
 async def mcp_endpoint(request: MCPRequest):
     """
