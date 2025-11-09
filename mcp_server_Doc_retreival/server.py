@@ -269,7 +269,25 @@ async def root(request: Request):
                                 <canvas id="toolCanvas" width="400" height="80" style="width:100%;height:80px;background:transparent"></canvas>
                             </div>
                         </div>
-                        <div style="margin-top:8px" class="muted">Updated every 2s • History: last %%METRICS_SECONDS%% seconds</div>
+                        <div style="margin-top:8px;display:flex;gap:12px;align-items:center">
+                            <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+                                <div style="font-size:13px;color:var(--muted)">Updated every 2s • History: last %%METRICS_SECONDS%% seconds</div>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <div style="flex:1">
+                                        <div class="muted">Health ping</div>
+                                        <canvas id="pingHealthSmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
+                                    </div>
+                                    <div style="flex:1">
+                                        <div class="muted">MCP ping</div>
+                                        <canvas id="pingMcpSmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
+                                    </div>
+                                    <div style="flex:1">
+                                        <div class="muted">Query ping</div>
+                                        <canvas id="pingQuerySmall" width="200" height="40" style="width:100%;height:40px;background:transparent"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="card">
@@ -343,6 +361,60 @@ async def root(request: Request):
                 // initial warmup
                 for(let i=0;i<6;i++) pingHealth();
                 setInterval(pingHealth, 2000);
+
+                // small sparklines for health, mcp and query endpoints (use actual pings, not random)
+                const phCanvas = document.getElementById('pingHealthSmall');
+                const phCtx = phCanvas ? phCanvas.getContext('2d') : null;
+                const pmCanvas = document.getElementById('pingMcpSmall');
+                const pmCtx = pmCanvas ? pmCanvas.getContext('2d') : null;
+                const pqCanvas = document.getElementById('pingQuerySmall');
+                const pqCtx = pqCanvas ? pqCanvas.getContext('2d') : null;
+
+                const smallMax = 30;
+                const ph = [], pm = [], pq = [];
+
+                async function pingEndpoint(path, arr, ctx, method='GET', body=null){
+                    const t0 = performance.now();
+                    try{
+                        let res;
+                        if(method === 'POST'){
+                            res = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: body});
+                        } else {
+                            res = await fetch(path, {cache:'no-store'});
+                        }
+                        const t1 = performance.now();
+                        const ms = Math.round(t1-t0);
+                        arr.push(ms); if(arr.length>smallMax) arr.shift();
+                        drawSmallSpark(ctx, arr);
+                        return ms;
+                    }catch(e){
+                        arr.push(999); if(arr.length>smallMax) arr.shift();
+                        drawSmallSpark(ctx, arr);
+                        return null;
+                    }
+                }
+
+                function drawSmallSpark(ctx, values){
+                    if(!ctx) return;
+                    const w = ctx.canvas.width; const h = ctx.canvas.height;
+                    ctx.clearRect(0,0,w,h);
+                    // grid lines
+                    ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+                    ctx.beginPath(); for(let y=0;y<=h;y+=h/4){ ctx.moveTo(0,y+0.5); ctx.lineTo(w,y+0.5); } ctx.stroke();
+                    if(values.length===0) return;
+                    const maxV = Math.max(50, ...values);
+                    ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(123,227,255,0.95)';
+                    values.forEach((v,i)=>{
+                        const x = (i/(values.length-1))*w;
+                        const y = h - (v/maxV)*h;
+                        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                    }); ctx.stroke();
+                }
+
+                // ping loops
+                setInterval(()=>{ pingEndpoint('/health', ph, phCtx); }, 2000);
+                setInterval(()=>{ pingEndpoint('/mcp', pm, pmCtx, 'POST', JSON.stringify({jsonrpc:'2.0', id:1, method:'tools/list'})); }, 2000);
+                setInterval(()=>{ pingEndpoint('/query', pq, pqCtx); }, 2000);
 
                 function testTools() {
                     fetch('/mcp', {
