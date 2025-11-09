@@ -3,6 +3,9 @@
 const http = require('http');
 
 const PORT = 3000;
+false;
+caches;
+debugger.;saq`  `
 
 function setCorsHeaders(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
