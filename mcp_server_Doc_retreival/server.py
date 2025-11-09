@@ -15,6 +15,30 @@ import sys
 import os
 import time
 
+# Load environment from a .env file if present and set sensible defaults.
+# NOTE: Do NOT hardcode API tokens in source. If you want to run with
+# the Hugging Face Inference API, set the token in the environment (recommended):
+#
+# PowerShell example (do NOT commit these lines to source):
+# $env:HUGGINGFACE_API_TOKEN = "hf_xxxYOURTOKENxxx"
+# $env:GEMMA_MODEL = "bigscience/gemma-2b"
+#
+# The code below will read environment variables and will default GEMMA_MODEL
+# to 'bigscience/gemma-2b' if nothing is provided.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # dotenv is optional; requirements.txt already lists python-dotenv
+    pass
+
+# Default model id for Gemma 2 b (can be overridden via GEMMA_MODEL env var)
+os.environ.setdefault("GEMMA_MODEL", "bigscience/gemma-2b")
+
+# Helper accessors used elsewhere in the module
+GEMMA_MODEL = os.environ.get("GEMMA_MODEL")
+HUGGINGFACE_API_TOKEN = os.environ.get("HUGGINGFACE_API_TOKEN") or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
+
 # Note: The original code imported 'router' but it wasn't used. Keeping the structure for completeness.
 # from mcp_server_Doc_retreival.routes import router
 
