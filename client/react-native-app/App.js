@@ -46,18 +46,48 @@ export default function App() {
     setInput('');
     setLoading(true);
 
+    // Determine target URL. If user provided a base URL (no path), default to /query endpoint
+    let target = serverUrl;
     try {
-      const res = await fetch(serverUrl, {
+      const parsed = new URL(serverUrl);
+      // If path is empty or just '/', prefer the /query endpoint
+      if (!parsed.pathname || parsed.pathname === '/') {
+        parsed.pathname = '/query';
+        target = parsed.toString();
+      }
+    } catch (e) {
+      // If invalid URL (user may have omitted scheme), try to treat as host with http
+      try {
+        const parsed2 = new URL(`http://${serverUrl}`);
+        if (!parsed2.pathname || parsed2.pathname === '/') {
+          parsed2.pathname = '/query';
+          target = parsed2.toString();
+        } else {
+          target = parsed2.toString();
+        }
+      } catch (err) {
+        // fallback to raw serverUrl
+        target = serverUrl;
+      }
+    }
+
+    // Send to target; prefer /query request shape { question: string }
+    try {
+      const res = await fetch(target, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({ question: text })
       });
 
       let assistantText = '';
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const data = await res.json();
-        assistantText = data.reply || data.response || JSON.stringify(data);
+        // server's /query returns { answer, confidence, sources }
+        if (data.answer) assistantText = data.answer;
+        else if (data.reply) assistantText = data.reply;
+        else if (data.response) assistantText = data.response;
+        else assistantText = JSON.stringify(data);
       } else {
         assistantText = await res.text();
       }

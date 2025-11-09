@@ -29,9 +29,16 @@ const server = http.createServer((req, res) => {
       console.log('Body:', body);
       try {
         const data = JSON.parse(body || '{}');
-        const msg = data.message || data.msg || '';
-        const reply = `Echo: ${msg}`;
-        const response = { reply };
+        // Support multiple request shapes:
+        // - { message: '...' } (older test)
+        // - { question: '...' } (server /query)
+        const msg = data.question || data.message || data.msg || '';
+        // If client expects QueryResponse, return { answer, confidence, sources }
+        const response = {
+          answer: `Echo: ${msg}`,
+          confidence: 0.9,
+          sources: []
+        };
         const out = JSON.stringify(response);
         console.log('Reply:', out);
         res.writeHead(200, { 'Content-Type': 'application/json' });

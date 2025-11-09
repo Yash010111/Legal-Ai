@@ -33,12 +33,24 @@ async function send(){
   msgInput.value = '';
   const url = serverUrlInput.value.trim();
   try{
-    const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
+    // If user entered a base URL (no path), default to /query endpoint
+    let target = url;
+    try{
+      const parsed = new URL(url);
+      if(!parsed.pathname || parsed.pathname === '/'){
+        parsed.pathname = '/query';
+        target = parsed.toString();
+      }
+    }catch(_){
+      try{ const p2 = new URL(`http://${url}`); if(!p2.pathname||p2.pathname==='/'){ p2.pathname='/query'; target = p2.toString(); } else target = p2.toString(); }catch(__){ target = url; }
+    }
+
+    const res = await fetch(target, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text})});
     const ct = res.headers.get('content-type')||'';
     let reply = '';
     if(ct.includes('application/json')){
       const data = await res.json();
-      reply = data.reply || data.response || JSON.stringify(data);
+      reply = data.answer || data.reply || data.response || JSON.stringify(data);
     } else {
       reply = await res.text();
     }
