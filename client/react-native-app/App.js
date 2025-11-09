@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEY_URL = '@mcp_server_url';
 
 export default function App() {
-  const [serverUrl, setServerUrl] = useState('http://localhost:3000');
+  const [serverUrl, setServerUrl] = useState('https://aafb074a34b4.ngrok-free.app/query');
   const [urlEdit, setUrlEdit] = useState('');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
