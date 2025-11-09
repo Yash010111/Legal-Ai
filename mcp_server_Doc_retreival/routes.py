@@ -21,28 +21,30 @@ ai_engine = LegalMindAI()
 ai_engine.load_model()
 
 
-def retrieve_relevant_text(question: str, datasets_dir: str = "datasets", max_files: int = 5) -> str:
-    """
-    Naive retrieval: Search all .txt files in datasets for the question's keywords.
-    Returns concatenated snippets from the most relevant files.
-    """
+import json
+def retrieve_best_answer(question: str, qa_json_path: str = "datasets/constitution_qa.json", min_score: float = 0.5) -> str:
     import os
-    import re
+    import json
+    from difflib import SequenceMatcher
 
-    if not os.path.exists(datasets_dir):
+    if not os.path.exists(qa_json_path):
         return ""
 
-    files = glob.glob(os.path.join(datasets_dir, "*.txt"))
-    results = []
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            text = f.read()
-            # Simple keyword match
-            if any(word.lower() in text.lower() for word in question.split()):
-                results.append(text[:2000])  # Take first 2000 chars as snippet
+    with open(qa_json_path, "r", encoding="utf-8") as f:
+        qa_pairs = json.load(f)
 
-    # Return concatenated context from up to max_files
-    return "\n\n".join(results[:max_files])
+    best_score = 0
+    best_answer = None
+    for pair in qa_pairs:
+        q = pair.get("question", "")
+        a = pair.get("answer", "")
+        score = SequenceMatcher(None, question.lower(), q.lower()).ratio()
+        if score > best_score:
+            best_score = score
+            best_answer = a
+    if best_answer and best_score >= min_score:
+        return best_answer
+    return "Sorry, I do not have an answer for that question yet."
 
 
 class QueryRequest(BaseModel):
@@ -80,17 +82,17 @@ async def query_legal_question(request: QueryRequest):
     Answer a legal question
     """
     try:
-        # Retrieve context from datasets if not provided
+        # Retrieve best-matching answer from constitution_qa.json if context not provided
         context = request.context
         if not context:
-            context = retrieve_relevant_text(request.question)
+            context = retrieve_best_answer(request.question)
         answer = ai_engine.answer_legal_question(
             question=request.question,
             context=context
         )
         return QueryResponse(
             answer=answer,
-            confidence=0.8,  # TODO: Implement actual confidence scoring
+            confidence=0.9 if context and 'A:' in context else 0.2,
             sources=[]
         )
     except Exception as e:
