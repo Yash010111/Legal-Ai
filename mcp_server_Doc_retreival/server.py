@@ -328,11 +328,8 @@ async def root(request: Request):
                     }
                 }
 
-                // initial warmup
-                for(let i=0;i<6;i++) pingHealth();
-                setInterval(pingHealth, 2000);
-
-                // ping loops handled by main ping sparkline (pingHealth)
+                // Replace separate warmup/intervals with a single combined poll
+                // to avoid interleaved requests and reduce total polling rate.
 
                 function testTools() {
                     fetch('/mcp', {
@@ -383,9 +380,21 @@ async def root(request: Request):
                     }
                 }
 
-                // initial metrics load and polling
-                updateMetrics();
-                setInterval(updateMetrics, 2000);
+                // initial metrics load and unified polling
+                // combined poll will fetch /metrics and /health together
+                async function pollAll(){
+                    try{
+                        // run both fetches in parallel to reduce latency
+                        await Promise.all([updateMetrics(), pingHealth()]);
+                    }catch(e){
+                        // ignore poll errors
+                    }
+                }
+
+                // run initial poll immediately, then every 4s
+                pollAll();
+                const POLL_INTERVAL_MS = 4000;
+                setInterval(pollAll, POLL_INTERVAL_MS);
 
                 // Flowing line only (requests)
                 const lineCanvas = document.getElementById('lineCanvas');
@@ -504,6 +513,83 @@ async def root(request: Request):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "legal-mind-ai-mcp"}
+
+
+# Simple /query endpoint to answer a user question using Gemma 2 b (Hugging Face)
+class QueryRequest(BaseModel):
+    question: str
+    max_tokens: Optional[int] = 256
+    temperature: Optional[float] = 0.0
+
+
+@app.post("/query")
+async def query_endpoint(qreq: QueryRequest):
+    """Answer a free-text question using Gemma 2 b from Hugging Face.
+
+    Behavior:
+    - If a Hugging Face API token is provided in env (HUGGINGFACE_API_TOKEN or HF_TOKEN),
+      the endpoint will call the Hugging Face Inference API with the configured model id.
+    - Otherwise it will attempt a local `transformers` pipeline for text-generation.
+
+    Configure the model via env `GEMMA_MODEL` (default: 'bigscience/gemma-2b').
+    """
+    question = (qreq.question or "").strip()
+    if not question:
+        return {"error": "Missing question"}
+
+    model_id = os.environ.get("GEMMA_MODEL", "bigscience/gemma-2b")
+    hf_token = os.environ.get("HUGGINGFACE_API_TOKEN") or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
+
+    try:
+        # Prefer remote Inference API when token is available
+        if hf_token:
+            try:
+                from huggingface_hub import InferenceApi
+            except Exception:
+                InferenceApi = None
+
+            if InferenceApi is None:
+                raise RuntimeError("huggingface_hub not installed; set up local transformers or install huggingface_hub")
+
+            infer = InferenceApi(repo_id=model_id, token=hf_token)
+            payload = {
+                "inputs": question,
+                "parameters": {"max_new_tokens": int(qreq.max_tokens or 256), "temperature": float(qreq.temperature or 0.0)},
+            }
+            resp = infer(payload)
+            # Response formats vary; try common fields
+            if isinstance(resp, dict):
+                answer = resp.get("generated_text") or resp.get("text") or json.dumps(resp)
+            elif isinstance(resp, list) and len(resp) > 0:
+                first = resp[0]
+                if isinstance(first, dict):
+                    answer = first.get("generated_text") or first.get("text") or json.dumps(first)
+                else:
+                    answer = str(first)
+            else:
+                answer = str(resp)
+
+            return {"model": model_id, "answer": answer}
+
+        # No HF token: try local transformers pipeline
+        try:
+            from transformers import pipeline
+            import torch as _torch
+        except Exception as e:
+            return {"error": "transformers or torch not available locally", "detail": str(e)}
+
+        device = 0 if _torch.cuda.is_available() else -1
+        pipe = pipeline("text-generation", model=model_id, device=device)
+        gen = pipe(question, max_new_tokens=int(qreq.max_tokens or 256), do_sample=False, temperature=float(qreq.temperature or 0.0))
+        if isinstance(gen, list) and len(gen) > 0 and isinstance(gen[0], dict) and "generated_text" in gen[0]:
+            answer = gen[0]["generated_text"]
+        else:
+            answer = str(gen)
+
+        return {"model": model_id, "answer": answer}
+
+    except Exception as e:
+        return {"error": "model invocation failed", "detail": str(e)}
 
 
 @app.post("/mcp", response_model=MCPResponse)
