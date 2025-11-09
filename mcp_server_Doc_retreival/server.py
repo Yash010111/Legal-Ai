@@ -15,6 +15,31 @@ import sys
 import os
 import time
 
+# Load environment from a .env file if present and set sensible defaults.
+# NOTE: Do NOT hardcode API tokens in source. If you want to run with
+# the Hugging Face Inference API, set the token in the environment (recommended):
+#
+# PowerShell example (do NOT commit these lines to source):
+# $env:HUGGINGFACE_API_TOKEN = "hf_xxxYOURTOKENxxx"
+# $env:GEMMA_MODEL = "bigscience/gemma-2b"
+#
+# The code below will read environment variables and will default GEMMA_MODEL
+# to 'bigscience/gemma-2b' if nothing is provided.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # dotenv is optional; requirements.txt already lists python-dotenv
+    pass
+
+# Default model id for Gemma 2 b (can be overridden via GEMMA_MODEL env var)
+# Per user request the server should default to use google/gemma-2-2b.
+os.environ.setdefault("GEMMA_MODEL", "google/gemma-2-2b")
+
+# Helper accessors used elsewhere in the module
+GEMMA_MODEL = os.environ.get("GEMMA_MODEL")
+HUGGINGFACE_API_TOKEN = os.environ.get("HUGGINGFACE_API_TOKEN") or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
+
 # Note: The original code imported 'router' but it wasn't used. Keeping the structure for completeness.
 # from mcp_server_Doc_retreival.routes import router
 
@@ -537,8 +562,19 @@ async def query_endpoint(qreq: QueryRequest):
     if not question:
         return {"error": "Missing question"}
 
-    model_id = os.environ.get("GEMMA_MODEL", "bigscience/gemma-2b")
+    # Use the configured model (default set above to google/gemma-2-2b)
+    model_id = os.environ.get("GEMMA_MODEL", "google/gemma-2-2b")
     hf_token = os.environ.get("HUGGINGFACE_API_TOKEN") or os.environ.get("HF_TOKEN") or os.environ.get("HF_API_TOKEN")
+
+    # Require a Hugging Face token for remote inference with the hosted Gemma model.
+    # This avoids attempting a large local model fallback which is impractical in many environments.
+    if not hf_token:
+        # Return explicit HTTP 400 so clients know to set the token (use set_env.py or your shell)
+        raise HTTPException(status_code=400, detail=(
+            "Hugging Face API token is required for /query. "
+            "Set HUGGINGFACE_API_TOKEN (or HF_TOKEN) in the environment using your preferred method. "
+            "You can use the provided set_env.py or set the env var in your shell."
+        ))
 
     try:
         # Prefer remote Inference API when token is available

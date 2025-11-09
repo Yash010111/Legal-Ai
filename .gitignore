@@ -140,6 +140,10 @@ logs/
 temp/
 cache/
 
+# Local environment helpers
+# Ignore the PowerShell helper that may contain secrets for local use
+mcp_server_Doc_retreival/set_env.ps1
+
 # IDE
 .vscode/
 .idea/
