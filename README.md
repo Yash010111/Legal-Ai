@@ -34,7 +34,6 @@ An intelligent legal assistant platform focused on **MCP (Model Context Protocol
 
 ## 💻 Setup
 
-### First Time Setup (Install `uv` - One Time Only)
 
-```bash
-pip install uv
+
+
