@@ -9,7 +9,7 @@ const sendBtn = document.getElementById('sendBtn');
 const STORAGE_KEY = 'mcp_server_url_preview';
 
 function loadUrl(){
-  const u = localStorage.getItem(STORAGE_KEY) || 'https://b68e6007292d.ngrok-free.app/query';
+  const u = localStorage.getItem(STORAGE_KEY) || 'https://4e5f224b37ca.ngrok-free.app';
   serverUrlInput.value = u;
 }
 
