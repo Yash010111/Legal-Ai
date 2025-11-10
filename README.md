@@ -1,144 +1,40 @@
-# Legal Mind AI
+<img src="img1.png" alt="Legal Mind AI Icon" width="100%" style="display: block; margin: 0 auto;">
 
-An intelligent legal assistant platform designed to streamline legal document processing and analysis.
+# Legal Mind AI ⚖️
 
-### Project Report
-- Whole common project continuous report: [Google Doc](https://docs.google.com/document/d/1ujIPLa_VAtKPUq2dBzsqleXNELAGpozhfcepXkx0Z_E/edit?tab=t.0)
+An intelligent legal assistant platform focused on **MCP (Model Context Protocol)** server and client for legal document retrieval and analysis.
 
-## Features
+-----
 
-### PDF → Word Converter
-- Convert a single PDF or an entire folder of PDFs
-- Preserves text, basic layout, and tables (best-effort)
-- Fully offline and free (uses `pdf2docx`)
-- Optimized for legal documents
+## ✨ Features
 
-### Requirements
-- Python 3.9+ (Windows, macOS, Linux)
+### MCP Server (`server.py`)
 
-### Setup
+  * **FastAPI-based** MCP server for legal document retrieval.
+  * Supports **HTTP API** and **MCP protocol** for client communication.
+  * **Real-time metrics dashboard** with ping and request rate monitoring.
+  * **Tool:** `ask_legal_question` for answering legal questions using RAG (Retrieval-Augmented Generation).
+  * **Endpoints:** `/mcp`, `/health`, `/query`, `/metrics`.
 
-#### First time setup (install uv - one time only)
+### MCP Client (`app.js`)
+
+  * **Web-based chat interface** for interacting with the MCP server.
+  * Minimal React Native **Expo app preview**.
+  * Supports querying the server via the `/query` endpoint.
+  * Stores server URL in `localStorage` for persistence.
+
+-----
+
+## 🔧 Requirements
+
+  * **Python 3.9+** (Windows, macOS, Linux)
+  * **Node.js** (for React Native client)
+
+-----
+
+## 💻 Setup
+
+### First Time Setup (Install `uv` - One Time Only)
+
 ```bash
 pip install uv
-```
-
-#### Install dependencies
-```bash
-uv sync
-```
-
-**Note:** Run `uv sync` every time a new dependency is added to the project.
-
-## 🚀 Quick Start
-
-### Start the Server
-```bash
-python start_server.py
-# OR
-python -m mcp_server.server
-```
-
-### Start a Client
-```bash
-python start_client.py
-# OR
-python client/client.py  # Local client
-```
-
-### Test the Setup
-```bash
-python mcp_server/test_mcp_communication.py
-```
-
-## Project Structure
-
-```
-Legal-Ai/
-├── README.md                    # Project overview & setup
-├── CLIENT_SERVER_GUIDE.md       # Client & Server usage guide
-├── NGROK_SETUP_GUIDE.md         # Ngrok setup guide
-├── pyproject.toml               # Project dependencies
-├── requirements.txt             # Legacy dependencies
-│
-├── mcp_server/                  # MCP Server Files
-│   ├── __init__.py
-│   ├── server.py                # Main MCP server
-│   ├── routes.py                # API routes
-│   └── test_mcp_communication.py # Server tests
-│
-├── client/                      # Client Files
-│   ├── __init__.py
-│   ├── client.py                # Local client
-│   ├── ngrok_client.py          # Remote client (ngrok)
-│   └── remote_client.py         # Remote client (network)
-│
-├── src/                         # Core AI Engine
-│   ├── __init__.py
-│   ├── ai_engine.py             # Main AI inference logic
-│   ├── text_utils.py            # Text cleaning, formatting, parsing
-│   └── pdf_converter.py         # PDF to Word converter
-│
-├── dat/                         # Data Files
-│   └── sample_docs/
-│       └── constitution_qa.json
-│
-├── helpers/                     # Helper utilities
-│   └── pdf_utils.py
-│
-├── notebooks/                   # Jupyter notebooks
-│   └── demo.ipynb
-│
-├── tests/                       # Tests
-│   └── test_ai_engine.py
-│
-├── start_server.py              # Server startup script
-└── start_client.py              # Client launcher script
-```
-
-## Usage
-
-### PDF → Word Converter
-
-#### 1) Convert all PDFs in `Testing pdfs` (default)
-```bash
-python src/pdf_converter.py
-```
-
-#### 2) Convert a specific folder
-```bash
-python src/pdf_converter.py "path/to/pdf/folder"
-```
-
-### AI Engine
-
-#### Basic Usage
-```python
-from src.ai_engine import LegalMindAI
-
-# Initialize AI engine
-ai = LegalMindAI()
-ai.load_model()
-
-# Analyze a document
-analysis = ai.analyze_document("Your legal document text here")
-
-# Answer legal questions
-answer = ai.answer_legal_question("What is a contract?")
-```
-
-### MCP Server
-
-#### Start the server
-```bash
-python mcp_server/server.py
-```
-
-The server will be available at `http://localhost:8000` with API documentation at `http://localhost:8000/docs`.
-
-### Notes
-- Free/offline library used: `pdf2docx`. For complex legal layouts, results vary by file; review critical outputs.
-- For best performance on large datasets, run on SSD and process subfolders in parallel sessions.
-
-### License
-This project is licensed under the MIT License. See `LICENSE` for details.
