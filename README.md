@@ -6,7 +6,7 @@ An intelligent legal assistant platform designed to streamline legal document pr
 - Whole common project continuous report: [Google Doc](https://docs.google.com/document/d/1ujIPLa_VAtKPUq2dBzsqleXNELAGpozhfcepXkx0Z_E/edit?tab=t.0)
 
 ## Features
-
+###Under Devlopement
 ### PDF → Word Converter
 - Convert a single PDF or an entire folder of PDFs
 - Preserves text, basic layout, and tables (best-effort)
@@ -135,7 +135,17 @@ python mcp_server/server.py
 ```
 
 The server will be available at `http://localhost:8000` with API documentation at `http://localhost:8000/docs`.
+---
 
+## 👥 Authors & Contact
+
+- **Developer** — Yash Paraskar
+- **Email** — yashparaskar2@gmail.com
+- **GitHub** — https://github.com/Yash010111
+- **LinkedIn** — https://www.linkedin.com/in/yash-paraskar-97a873271/
+- **Issues / Support** — Create an issue in the repository
+
+---
 ### Notes
 - Free/offline library used: `pdf2docx`. For complex legal layouts, results vary by file; review critical outputs.
 - For best performance on large datasets, run on SSD and process subfolders in parallel sessions.
